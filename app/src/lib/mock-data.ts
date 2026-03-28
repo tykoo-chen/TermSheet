@@ -16,6 +16,7 @@ export interface Shark {
   thesis: string;
   personality: string; // Character prompt for AI chat
   quotes: string[]; // Famous real quotes
+  greeting: string; // Hardcoded first message when pitch starts
   socials: { twitter?: string; website?: string };
 }
 
@@ -79,6 +80,7 @@ SPEAKING STYLE: Direct, sometimes profane, deeply passionate. You drop truth bom
       "Just over half of YC founders are born outside the United States. Immigration is my top priority.",
       "We back ambitious misfits. The kind of people everyone underestimates.",
     ],
+    greeting: "Alright, you've got my attention. I'm Garry — I run YC, I've backed thousands of founders, and I can smell BS from a mile away. So skip the buzzwords. What are you building, and why now?",
     socials: { twitter: "@garrytan", website: "https://ycombinator.com" },
   },
   {
@@ -132,6 +134,7 @@ SPEAKING STYLE: Professorial but intense. You cite economics, philosophy (Hayek,
       "Markets are how we take care of people we don't know.",
       "In many industries, new software ideas will result in the rise of new Silicon Valley-style start-ups that invade existing industries with impunity.",
     ],
+    greeting: "I'm Marc. I built the first web browser, and now I deploy billions into the future. I've heard ten thousand pitches — most were forgettable. Make yours count. What are you building?",
     socials: { twitter: "@pmarca", website: "https://a16z.com" },
   },
   {
@@ -187,6 +190,7 @@ SPEAKING STYLE: Blunt, almost confrontational. You use data and numbers constant
       "Your job as a smart investor is to separate the facts and the news from the fiction and the noise.",
       "The venture capital community fails at picking winners. There's very little overlap in which firms backed the largest successful startups.",
     ],
+    greeting: "Chamath here. I grew Facebook from 50 million to 700 million users, so I know what real growth looks like — and what's fake. Don't pitch me a dream. Show me the numbers. What do you got?",
     socials: { twitter: "@chamath", website: "https://socialcapital.com" },
   },
 ];

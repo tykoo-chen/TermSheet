@@ -119,32 +119,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const startPitch = async () => {
     if (blocked) return;
     setStarted(true);
-    setLoading(true);
-
-    try {
-      const res = await authFetch(`/api/chat`, {
-        method: "POST",
-        body: JSON.stringify({
-          shark_id: shark.id,
-          session_id: sessionId,
-          messages: [
-            { role: "user", content: "A founder has just entered your pitch room. Introduce yourself in character and ask them what they're building. Keep it to 2-3 sentences. Reference one of your famous quotes." },
-          ],
-        }),
-      });
-      if (res.status === 429) {
-        setBlocked(true);
-        setStarted(false);
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      if (data.session_id) setSessionId(data.session_id);
-      setMessages([{ role: "assistant", content: data.reply || "What are you building? Tell me." }]);
-    } catch {
-      setMessages([{ role: "assistant", content: `Pitch session with ${shark.name}. What are you building?` }]);
-    }
-    setLoading(false);
+    setMessages([{ role: "assistant", content: shark.greeting }]);
   };
 
   const sendMessage = async () => {
