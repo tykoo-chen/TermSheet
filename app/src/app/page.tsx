@@ -77,19 +77,21 @@ export default function Home() {
                     </span>
                   </div>
                   <div style={{ padding: 10, flex: 1, display: "flex", flexDirection: "column" }}>
-                    {/* Avatar + Title */}
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                    {/* Large Avatar */}
+                    <div style={{ textAlign: "center", marginBottom: 8 }}>
                       <img
                         src={shark.avatar}
                         alt={shark.name}
-                        style={{ width: 48, height: 48, borderRadius: 4, border: "2px inset", objectFit: "cover" }}
+                        style={{ width: 120, height: 120, borderRadius: 6, border: "3px inset", objectFit: "cover", margin: "0 auto" }}
                       />
-                      <div>
-                        <div style={{ fontFamily: "var(--font-pixel)", fontSize: 20, color: "green", fontWeight: "bold", lineHeight: 1 }}>
-                          ${shark.stakedAmount.toLocaleString()}
-                        </div>
-                        <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>{shark.title}</div>
+                    </div>
+
+                    {/* Staked + Title */}
+                    <div style={{ textAlign: "center", marginBottom: 6 }}>
+                      <div style={{ fontFamily: "var(--font-pixel)", fontSize: 24, color: "green", fontWeight: "bold" }}>
+                        ${shark.stakedAmount.toLocaleString()}
                       </div>
+                      <div style={{ fontSize: 11, color: "#444", marginTop: 2 }}>{shark.title}</div>
                     </div>
 
                     {/* Tags */}
