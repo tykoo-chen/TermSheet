@@ -66,7 +66,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const [roundNumber, setRoundNumber] = useState(0);
 
   // Rate limiting state
-  const [blocked, setBlocked] = useState(false);
+  const [blocked] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [timeLeft, setTimeLeft] = useState(SESSION_SECONDS);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);

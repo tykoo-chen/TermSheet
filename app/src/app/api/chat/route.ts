@@ -145,7 +145,7 @@ OUTPUT FORMAT — you must respond with valid JSON only, no other text:
       parsed = JSON.parse(raw);
     } catch {
       // Fallback if AI ignores JSON format instruction
-      parsed = { reply: raw, score: 0, decision: "PENDING", reject_reason: null };
+      parsed = { reply: raw, score: 0, decision: "PENDING", reject_reason: undefined };
     }
 
     const reply = parsed.reply || "...";
