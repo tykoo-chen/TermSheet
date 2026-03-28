@@ -37,13 +37,41 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
+  // Personalized responses based on investor personality
+  const getResponses = () => {
+    if (shark.id === "garry-tan") return [
+      `Alright, I'm listening. But skip the buzzwords — what have you actually BUILT? Show me the product. I'm a designer and engineer, I can tell if it's real.`,
+      `OK, interesting. Who are your users? Have you talked to them? I don't care about TAM slides — I care about whether real humans want this thing.`,
+      `What's your unfair advantage? Why can YOUR team win this? I back ambitious misfits — tell me why you're the misfit who sees something nobody else does.`,
+      `Good. I can work with this. How much are you raising and what's the burn? I want to see you move FAST — YC companies grow 10-20% weekly. Can you?`,
+      `I've heard enough. Let me think about whether the timing is right — "the most powerful startups emerge when factors converge to make NOW the perfect time." Drop your deck and I'll review.`,
+    ];
+    if (shark.id === "marc-andreessen") return [
+      `Software is eating the world. AI is eating software. So tell me — what part of the world is YOUR software eating? And please, think BIGGER than you're probably thinking.`,
+      `OK, but is this a MASSIVE market? I don't fund incremental improvements. I fund companies that "invade existing industries with impunity." Convince me this is that.`,
+      `Who are the incumbents you're destroying? "No one should expect building a new high-growth company in an established industry to be easy. It's brutally difficult." Why can you do it?`,
+      `What's the technology moat? I co-built the web browser — I know what real technical depth looks like. Show me something that was IMPOSSIBLE two years ago.`,
+      `Interesting. This could be big. Send me the deck, your GitHub, and anything that shows technical depth. I want to believe. IT'S TIME TO BUILD.`,
+    ];
+    // Chamath
+    return [
+      `Alright, here's how this works. I'm going to ask you hard questions and I want honest answers. No VC-speak. What problem are you solving and WHY should I care?`,
+      `Numbers. I want numbers. What are your unit economics? Customer acquisition cost? LTV? "Your job as a smart investor is to separate facts from fiction and noise." Show me facts.`,
+      `"Valuable companies take decades to build." What's your 10-year vision? I don't care about your exit strategy — I care about whether this compounds.`,
+      `Here's the hard ugly truth most VCs won't tell you: most startups fail because they chase hype instead of solving real problems. Tell me why yours is different.`,
+      `OK. You've got my attention. But remember — "fast money returns completely decay long-term thinking." I invest in compounders. Send me everything and let me dig into the data.`,
+    ];
+  };
+
   const startPitch = () => {
     setStarted(true);
+    const intros: Record<string, string> = {
+      "garry-tan": `Welcome to YC's virtual pitch room. I'm Garry.\n\n"Don't tell me there are too few good ideas. Go outside — there's a billion problems to solve."\n\nSo what's YOUR billion-dollar problem? Tell me what you're building. Drop files anytime.`,
+      "marc-andreessen": `You've entered the a16z pitch chamber. I'm Marc.\n\n"It's time to build."\n\nI want to hear about technology that changes everything. What are you building, and why does the world need it NOW? Attach your deck whenever.`,
+      "chamath-palihapitiya": `Social Capital pitch session. I'm Chamath.\n\nFair warning: I'm going to be blunt. "People are unhappy because they're chasing the wrong things." I hope you're not.\n\nWhat are you building and what real human problem does it solve? Files welcome anytime.`,
+    };
     setMessages([
-      {
-        role: "system",
-        content: `Welcome! You're pitching to ${shark.name}.\n\nTell me about your project — what are you building and why? You can also drop files (pitch deck, financials) directly into the chat.\n\nTip: Just talk naturally. No forms needed.`,
-      },
+      { role: "system", content: intros[shark.id] || `Pitch session with ${shark.name}. What are you building?` },
     ]);
   };
 
@@ -53,15 +81,10 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    // Simulate system response
     setTimeout(() => {
-      const responses = [
-        `Got it. What stage are you at — do you have users or revenue yet?`,
-        `Interesting. What's your unfair advantage? Why can your team win this?`,
-        `How much are you raising, and what will you use the funds for?`,
-        `Thanks — I have enough to package your pitch for ${shark.name}. Ready to submit?`,
-      ];
-      const idx = Math.min(messages.filter((m) => m.role === "system").length, responses.length - 1);
+      const responses = getResponses();
+      const userMsgCount = messages.filter((m) => m.role === "user").length;
+      const idx = Math.min(userMsgCount, responses.length - 1);
       setMessages((prev) => [...prev, { role: "system", content: responses[idx] }]);
     }, 800);
   };
@@ -167,8 +190,18 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
             </div>
 
             {/* Track record */}
-            <div style={{ marginTop: 8, fontSize: 10, color: "#666" }}>
-              {shark.dealsCompleted} deals · {shark.successRate}% success · ${(shark.totalDeployed / 1000).toFixed(0)}K deployed
+            <div style={{ marginTop: 8, fontSize: 10, color: "#666", marginBottom: 8 }}>
+              {shark.dealsCompleted} deals · {shark.successRate}% success
+            </div>
+
+            {/* Quotes */}
+            <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>Famous quotes:</div>
+            <div className="inset-box" style={{ fontSize: 10, maxHeight: 120, overflowY: "auto", padding: 4, lineHeight: 1.4 }}>
+              {shark.quotes.slice(0, 4).map((q, i) => (
+                <div key={i} style={{ marginBottom: 4, fontStyle: "italic", color: "#444" }}>
+                  &ldquo;{q}&rdquo;
+                </div>
+              ))}
             </div>
           </div>
         </div>
