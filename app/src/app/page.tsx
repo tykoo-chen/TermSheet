@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Win95Window from "@/components/Win95Window";
 import { sharks } from "@/lib/mock-data";
 
 const sectors = ["All", "DeFi", "AI + Web3", "Infrastructure", "Consumer", "Gaming", "Social", "RWA", "Payments", "Dev Tools", "ZK"];
@@ -18,7 +17,6 @@ export default function Home() {
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 30px)" }}>
-      {/* Left: Main Content */}
       <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
         <div className="win95-window" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
           <div className="win95-title-bar">
@@ -30,17 +28,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Menu */}
-          <div style={{ display: "flex", padding: "2px 4px", borderBottom: "1px solid var(--win-border-dark)" }}>
-            <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>File</span>
-            <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>Edit</span>
-            <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>View</span>
-            <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>Investors</span>
-            <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>Help</span>
-          </div>
-
-          {/* Toolbar */}
-          <div style={{ display: "flex", gap: 4, padding: "4px 6px", borderBottom: "1px solid var(--win-border-dark)", alignItems: "center", flexWrap: "wrap" }}>
+          {/* Toolbar — search + filter only */}
+          <div style={{ display: "flex", gap: 6, padding: "4px 6px", borderBottom: "1px solid var(--win-border-dark)", alignItems: "center" }}>
             <span style={{ fontSize: 11 }}>Find:</span>
             <input
               className="inset-input"
@@ -48,7 +37,7 @@ export default function Home() {
               placeholder="Search investors..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: 160 }}
+              style={{ width: 180 }}
             />
             <span style={{ fontSize: 11, marginLeft: 8 }}>Sector:</span>
             <select
@@ -62,98 +51,70 @@ export default function Home() {
               ))}
             </select>
             <span style={{ fontSize: 11, marginLeft: "auto", color: "#666" }}>
-              {filtered.length} investor(s) found
+              {filtered.length} investor(s)
             </span>
+            <Link href="/dashboard">
+              <button className="win95-btn" style={{ fontSize: 10, padding: "2px 8px" }}>📊 Dashboard</button>
+            </Link>
           </div>
 
-          {/* Shark Grid */}
+          {/* Shark Grid — fixed height cards */}
           <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
               {filtered.map((shark) => (
                 <Link key={shark.id} href={`/sharks/${shark.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                  <div className="win95-window" style={{
-                    cursor: "pointer",
-                    transition: "box-shadow 0.1s",
-                  }}>
+                  <div className="win95-window" style={{ cursor: "pointer", height: "100%", display: "flex", flexDirection: "column" }}>
                     <div style={{
                       background: "var(--title-bg-active)",
                       color: "white",
-                      padding: "2px 4px",
+                      padding: "2px 6px",
                       margin: 2,
                       fontSize: 11,
                       fontWeight: "bold",
-                      display: "flex",
-                      justifyContent: "space-between",
                     }}>
-                      <span>{shark.name}</span>
-                      <span style={{ opacity: 0.7 }}>★</span>
+                      {shark.name}
                     </div>
-                    <div style={{ padding: 8 }}>
-                      {/* Avatar + Amount */}
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                        <div style={{
-                          width: 36, height: 36,
-                          background: "#808080",
-                          border: "inset 2px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 20,
-                          flexShrink: 0,
-                        }}>
-                          {shark.avatar}
-                        </div>
-                        <div>
-                          <div style={{
-                            fontFamily: "var(--font-pixel)",
-                            fontSize: 20,
-                            color: "green",
-                            fontWeight: "bold",
-                            lineHeight: 1,
-                          }}>
-                            ${shark.stakedAmount.toLocaleString()}
-                          </div>
-                          <div style={{ fontSize: 10, color: "#666" }}>staked</div>
-                        </div>
+                    <div style={{ padding: 8, flex: 1, display: "flex", flexDirection: "column" }}>
+                      {/* Amount */}
+                      <div style={{
+                        fontFamily: "var(--font-pixel)",
+                        fontSize: 22,
+                        color: "green",
+                        fontWeight: "bold",
+                        marginBottom: 4,
+                      }}>
+                        ${shark.stakedAmount.toLocaleString()}
                       </div>
 
-                      {/* Info */}
-                      <div style={{ fontSize: 10, color: "#444", marginBottom: 6, lineHeight: 1.4 }}>
+                      {/* Title */}
+                      <div style={{ fontSize: 11, color: "#444", marginBottom: 6, lineHeight: 1.3, minHeight: 28 }}>
                         {shark.title}
                       </div>
 
-                      {/* Tags */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 6 }}>
-                        {shark.sectors.map((s) => (
-                          <span key={s} style={{
-                            fontSize: 9,
-                            padding: "1px 4px",
-                            background: "#e0e0e0",
-                            border: "1px solid var(--win-border-dark)",
-                          }}>
+                      {/* Tags — fixed area */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 6, minHeight: 22 }}>
+                        {shark.sectors.slice(0, 2).map((s) => (
+                          <span key={s} style={{ fontSize: 9, padding: "1px 4px", background: "#e0e0e0", border: "1px solid var(--win-border-dark)" }}>
                             {s}
                           </span>
                         ))}
-                        <span style={{
-                          fontSize: 9,
-                          padding: "1px 4px",
-                          background: "#ffffcc",
-                          border: "1px solid #cc9",
-                        }}>
+                        <span style={{ fontSize: 9, padding: "1px 4px", background: "#ffffcc", border: "1px solid #cc9" }}>
                           {shark.stage}
                         </span>
                       </div>
 
-                      {/* Stats row */}
+                      {/* Stats */}
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#666", marginBottom: 6 }}>
                         <span>{shark.dealsCompleted} deals</span>
-                        <span>{shark.successRate}% success</span>
+                        <span>{shark.successRate}%</span>
                       </div>
 
-                      {/* CTA */}
-                      <button className="win95-btn" style={{ width: "100%", fontSize: 11, fontWeight: "bold" }}>
-                        Pitch Me →
-                      </button>
+                      {/* CTA — pushed to bottom */}
+                      <div style={{ marginTop: "auto" }}>
+                        <button className="win95-btn" style={{ width: "100%", fontSize: 11, fontWeight: "bold" }}>
+                          Pitch Me →
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </Link>
@@ -162,7 +123,7 @@ export default function Home() {
 
             {filtered.length === 0 && (
               <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>
-                No investors match your search. Try different filters.
+                No investors match your search.
               </div>
             )}
           </div>
@@ -173,41 +134,10 @@ export default function Home() {
               Select an investor to start your pitch
             </div>
             <div className="status-bar-segment" style={{ fontSize: 11 }}>
-              Total: ${sharks.reduce((a, s) => a + s.stakedAmount, 0).toLocaleString()} staked
+              ${sharks.reduce((a, s) => a + s.stakedAmount, 0).toLocaleString()} staked
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Right: System Info Sidebar */}
-      <div style={{ width: 200, padding: "8px 8px 8px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-        {/* Quick Stats */}
-        <div className="win95-window">
-          <div className="win95-title-bar" style={{ fontSize: 11 }}>
-            <span>System Info</span>
-          </div>
-          <div style={{ padding: 6, fontSize: 11 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-              <span>Active Sheets:</span><span style={{ fontWeight: "bold" }}>42</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-              <span>Total Staked:</span><span style={{ fontWeight: "bold", color: "green" }}>$456K</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-              <span>Deals Done:</span><span style={{ fontWeight: "bold" }}>89</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Avg Time:</span><span style={{ fontWeight: "bold" }}>3.2 days</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard link */}
-        <Link href="/dashboard">
-          <button className="win95-btn" style={{ width: "100%", fontSize: 11 }}>
-            📊 Open Dashboard
-          </button>
-        </Link>
       </div>
     </div>
   );

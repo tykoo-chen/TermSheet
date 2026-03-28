@@ -1,22 +1,35 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
 
+interface Message {
+  role: "system" | "user";
+  content: string;
+  attachments?: string[];
+}
+
 export default function SharkProfile({ params }: { params: { id: string } }) {
   const shark = sharks.find((s) => s.id === params.id);
-  const [activeTab, setActiveTab] = useState(1);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [started, setStarted] = useState(false);
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   if (!shark) {
     return (
       <div style={{ height: "calc(100vh - 30px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div className="win95-window" style={{ width: 320 }}>
-          <div className="win95-title-bar">
-            <span>Error</span>
-            <div style={{ display: "flex", gap: 2 }}><div className="sys-btn">X</div></div>
-          </div>
-          <div style={{ padding: 16, textAlign: "center" }}>
-            <p style={{ fontSize: 12, marginBottom: 12 }}>Target not found in database.</p>
+        <div className="win95-window" style={{ width: 300 }}>
+          <div className="win95-title-bar"><span>Error</span></div>
+          <div style={{ padding: 16, textAlign: "center", fontSize: 12 }}>
+            Investor not found.
+            <br /><br />
             <Link href="/"><button className="win95-btn">OK</button></Link>
           </div>
         </div>
@@ -24,283 +37,254 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
+  const startPitch = () => {
+    setStarted(true);
+    setMessages([
+      {
+        role: "system",
+        content: `Welcome! You're pitching to ${shark.name}.\n\nTell me about your project — what are you building and why? You can also drop files (pitch deck, financials) directly into the chat.\n\nTip: Just talk naturally. No forms needed.`,
+      },
+    ]);
+  };
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+    const userMsg: Message = { role: "user", content: input };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+
+    // Simulate system response
+    setTimeout(() => {
+      const responses = [
+        `Got it. What stage are you at — do you have users or revenue yet?`,
+        `Interesting. What's your unfair advantage? Why can your team win this?`,
+        `How much are you raising, and what will you use the funds for?`,
+        `Thanks — I have enough to package your pitch for ${shark.name}. Ready to submit?`,
+      ];
+      const idx = Math.min(messages.filter((m) => m.role === "system").length, responses.length - 1);
+      setMessages((prev) => [...prev, { role: "system", content: responses[idx] }]);
+    }, 800);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleFileDrop = () => {
+    const fileName = "pitch_deck_v3.pdf";
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] },
+    ]);
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { role: "system", content: `Received ${fileName}. I'll include this in your pitch package. Anything else to add?` },
+      ]);
+    }, 600);
+  };
+
   return (
-    <div style={{ height: "calc(100vh - 30px)", padding: 8 }}>
-      <div className="win95-window" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <div className="win95-title-bar">
-          <span>Target Properties — {shark.name} — Pitch Session</span>
-          <div style={{ display: "flex", gap: 2 }}>
-            <div className="sys-btn">_</div>
-            <div className="sys-btn">□</div>
-            <div className="sys-btn"><Link href="/" style={{ color: "black", textDecoration: "none" }}>X</Link></div>
-          </div>
-        </div>
-
-        {/* Menu bar */}
-        <div style={{ display: "flex", padding: "2px 4px", borderBottom: "1px solid var(--win-border-dark)" }}>
-          <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>File</span>
-          <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>View</span>
-          <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>Investor</span>
-          <span style={{ padding: "2px 6px", fontSize: 12, cursor: "pointer" }}>Help</span>
-          <div style={{ marginLeft: "auto", padding: "2px 6px" }}>
-            <Link href="/" style={{ fontSize: 11, color: "blue", textDecoration: "underline" }}>
-              ← Back to Shark Tank
-            </Link>
-          </div>
-        </div>
-
-        {/* Scrollable content: 3 sections stacked */}
-        <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
-          {/* ═══════ SECTION 1: INVESTOR PROFILE ═══════ */}
-          <div className="win95-window" style={{ marginBottom: 8 }}>
-            <div style={{ background: "var(--title-bg-active)", color: "white", padding: "2px 6px", margin: 2, fontSize: 11, fontWeight: "bold" }}>
-              Section 1: Investor Profile
+    <div style={{ height: "calc(100vh - 30px)", padding: 8, display: "flex", gap: 8 }}>
+      {/* Left: Investor Info */}
+      <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+        {/* Profile */}
+        <div className="win95-window">
+          <div className="win95-title-bar" style={{ fontSize: 11 }}>
+            <span>{shark.name}</span>
+            <div style={{ display: "flex", gap: 2 }}>
+              <div className="sys-btn"><Link href="/" style={{ color: "black", textDecoration: "none" }}>X</Link></div>
             </div>
-            <div style={{ padding: 10 }}>
-              {/* Tabs */}
-              <div style={{ display: "flex", borderBottom: "1px solid var(--win-border-light)", marginBottom: 0 }}>
-                {["General", "Financials", "Track Record"].map((tab, i) => (
-                  <div
-                    key={tab}
-                    className={`win95-tab ${activeTab === i + 1 ? "win95-tab-active" : ""}`}
-                    onClick={() => setActiveTab(i + 1)}
-                  >
-                    {tab}
-                  </div>
-                ))}
-              </div>
-
+          </div>
+          <div style={{ padding: 8 }}>
+            <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
               <div style={{
-                border: "2px solid",
-                borderColor: "var(--win-border-light) var(--win-border-black) var(--win-border-black) var(--win-border-light)",
-                padding: 10,
+                width: 48, height: 48,
+                background: "#808080",
+                border: "inset 2px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 24,
+                flexShrink: 0,
               }}>
-                {/* Tab 1: General */}
-                {activeTab === 1 && (
-                  <div style={{ display: "flex", gap: 16 }}>
-                    <div style={{
-                      width: 56, height: 56,
-                      background: "#808080",
-                      border: "inset 2px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 28,
-                      flexShrink: 0,
-                    }}>
-                      {shark.avatar}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-                        <span style={{ fontWeight: "bold", fontSize: 14 }}>{shark.name}</span>
-                        <span style={{ fontSize: 10, color: "#666" }}>{shark.title}</span>
-                      </div>
-                      <hr style={{ border: "none", borderTop: "1px solid var(--win-border-dark)", borderBottom: "1px solid var(--win-border-light)", marginBottom: 6 }} />
-                      <table style={{ fontSize: 12 }}>
-                        <tbody>
-                          <tr><td style={{ textAlign: "right", paddingRight: 8, color: "#666", whiteSpace: "nowrap" }}>Sectors:</td><td>{shark.sectors.join(", ")}</td></tr>
-                          <tr><td style={{ textAlign: "right", paddingRight: 8, color: "#666" }}>Stage:</td><td style={{ fontWeight: "bold" }}>{shark.stage}</td></tr>
-                          <tr><td style={{ textAlign: "right", paddingRight: 8, color: "#666" }}>Status:</td><td className="blink" style={{ fontWeight: "bold", color: "green" }}>AWAITING PITCH</td></tr>
-                        </tbody>
-                      </table>
-                      <div className="inset-box" style={{ fontFamily: "var(--font-pixel)", fontSize: 13, padding: 6, marginTop: 8 }}>
-                        <strong>THESIS:</strong> {shark.thesis}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tab 2: Financials */}
-                {activeTab === 2 && (
-                  <div className="inset-box" style={{
-                    fontFamily: "var(--font-pixel)",
-                    background: "black",
-                    color: "lime",
-                    fontSize: 14,
-                    padding: 8,
-                  }}>
-                    Staked: ${shark.stakedAmount.toLocaleString()} [ON-CHAIN VERIFIED]<br />
-                    Total Deployed: ${shark.totalDeployed.toLocaleString()} [LIFETIME]<br />
-                    Valuation Range: {shark.valuationRange}<br />
-                    Deal Type: {shark.dealType}<br />
-                    Escrow: 0x1a2b...ef89 [BASE L2]
-                  </div>
-                )}
-
-                {/* Tab 3: Track Record */}
-                {activeTab === 3 && (
-                  <div>
-                    <div style={{ display: "flex", gap: 12, marginBottom: 8, fontSize: 12 }}>
-                      <span>Deals: <strong>{shark.dealsCompleted}</strong></span>
-                      <span>Success: <strong>{shark.successRate}%</strong></span>
-                      <span>Deployed: <strong>${(shark.totalDeployed / 1000).toFixed(0)}K</strong></span>
-                    </div>
-                    <div className="inset-box" style={{ background: "white" }}>
-                      {[
-                        { project: "LiquidSwap", amount: 10000, date: "Mar 2026" },
-                        { project: "ZKBridge", amount: 8000, date: "Feb 2026" },
-                        { project: "NeuralDAO", amount: 5000, date: "Jan 2026" },
-                      ].map((deal) => (
-                        <div key={deal.project} style={{ display: "flex", justifyContent: "space-between", padding: "2px 4px", borderBottom: "1px solid #eee", fontSize: 11 }}>
-                          <span>✔ {deal.project}</span>
-                          <span style={{ color: "green", fontFamily: "var(--font-pixel)", fontSize: 14 }}>${deal.amount.toLocaleString()}</span>
-                          <span style={{ color: "#888" }}>{deal.date}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {shark.avatar}
               </div>
+              <div>
+                <div style={{ fontWeight: "bold", fontSize: 13 }}>{shark.name}</div>
+                <div style={{ fontSize: 10, color: "#666" }}>{shark.title}</div>
+                <div className="blink" style={{ fontSize: 10, color: "green", fontWeight: "bold", marginTop: 2 }}>
+                  AWAITING PITCH
+                </div>
+              </div>
+            </div>
+            <div className="inset-box" style={{ fontFamily: "var(--font-pixel)", fontSize: 12, padding: 6, lineHeight: 1.4 }}>
+              {shark.thesis}
+            </div>
+          </div>
+        </div>
+
+        {/* Term Sheet */}
+        <div className="win95-window" style={{ flex: 1 }}>
+          <div className="win95-title-bar" style={{ fontSize: 11 }}>
+            <span>Term Sheet</span>
+          </div>
+          <div style={{ padding: 8 }}>
+            {[
+              { label: "Staked", value: `$${shark.stakedAmount.toLocaleString()}`, color: "green", big: true },
+              { label: "Valuation", value: shark.valuationRange },
+              { label: "Deal Type", value: shark.dealType },
+              { label: "Stage", value: shark.stage },
+              { label: "Sectors", value: shark.sectors.join(", ") },
+            ].map((item) => (
+              <div key={item.label} style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "3px 0",
+                borderBottom: "1px solid #ddd",
+                fontSize: 11,
+                alignItems: "center",
+              }}>
+                <span style={{ color: "#666" }}>{item.label}</span>
+                <span style={{
+                  fontWeight: "bold",
+                  color: (item as any).color || "var(--text-dark)",
+                  fontFamily: (item as any).big ? "var(--font-pixel)" : "inherit",
+                  fontSize: (item as any).big ? 16 : 11,
+                }}>
+                  {item.value}
+                </span>
+              </div>
+            ))}
+
+            <div className="inset-box" style={{ marginTop: 8, fontSize: 10, padding: 4 }}>
+              <span style={{ color: "green", fontWeight: "bold" }}>✓ On-Chain Verified</span>
+              {" · "}
+              <span style={{ color: "#888", fontFamily: "var(--font-pixel)", fontSize: 11 }}>0x1a2b...ef89</span>
+            </div>
+
+            {/* Track record */}
+            <div style={{ marginTop: 8, fontSize: 10, color: "#666" }}>
+              {shark.dealsCompleted} deals · {shark.successRate}% success · ${(shark.totalDeployed / 1000).toFixed(0)}K deployed
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Chat Pitch Interface */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div className="win95-window" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div className="win95-title-bar">
+            <span>Pitch to {shark.name} — ${shark.stakedAmount.toLocaleString()} available</span>
+            <div style={{ display: "flex", gap: 2 }}>
+              <div className="sys-btn">_</div>
+              <div className="sys-btn">□</div>
+              <div className="sys-btn"><Link href="/" style={{ color: "black", textDecoration: "none" }}>X</Link></div>
             </div>
           </div>
 
-          {/* ═══════ SECTION 2: TERM SHEET ═══════ */}
-          <div className="win95-window" style={{ marginBottom: 8 }}>
-            <div style={{ background: "var(--title-bg-active)", color: "white", padding: "2px 6px", margin: 2, fontSize: 11, fontWeight: "bold" }}>
-              Section 2: Term Sheet — ${shark.stakedAmount.toLocaleString()} Available
+          {!started ? (
+            /* Pre-pitch state */
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+              <div style={{ textAlign: "center", maxWidth: 360 }}>
+                <svg viewBox="0 0 32 32" width="48" height="48" style={{ margin: "0 auto 12px" }}>
+                  <path d="M16 2L2 30h28L16 2z" fill="yellow" stroke="#000" />
+                  <path d="M15 10h2v10h-2zM15 24h2v2h-2z" fill="#000" />
+                </svg>
+                <p style={{ fontFamily: "var(--font-pixel)", fontSize: 20, marginBottom: 8 }}>
+                  Ready to pitch {shark.name}?
+                </p>
+                <p style={{ fontSize: 12, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>
+                  You&apos;ll have a conversation to describe your project.
+                  <br />
+                  No forms — just talk naturally and attach files.
+                  <br />
+                  If {shark.name} accepts, ${shark.stakedAmount.toLocaleString()} goes to your wallet.
+                </p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
+                    Start Pitch →
+                  </button>
+                  <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }}>Back</button></Link>
+                </div>
+              </div>
             </div>
-            <div style={{ padding: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                {[
-                  { label: "Check Size", value: `$${shark.stakedAmount.toLocaleString()}`, highlight: true },
-                  { label: "Valuation Range", value: shark.valuationRange, highlight: false },
-                  { label: "Deal Type", value: shark.dealType, highlight: false },
-                  { label: "Stage", value: shark.stage, highlight: false },
-                  { label: "Sectors", value: shark.sectors.join(", "), highlight: false },
-                  { label: "Joined", value: shark.joinedDate, highlight: false },
-                ].map((item) => (
-                  <div key={item.label} className="inset-box" style={{ padding: 6, textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#666", marginBottom: 2 }}>{item.label}</div>
-                    <div style={{
-                      fontSize: item.highlight ? 18 : 12,
+          ) : (
+            <>
+              {/* Chat messages */}
+              <div
+                ref={chatRef}
+                className="inset-box"
+                style={{
+                  flex: 1,
+                  margin: 4,
+                  overflow: "auto",
+                  background: "black",
+                  fontFamily: "var(--font-pixel)",
+                  fontSize: 14,
+                  padding: 8,
+                }}
+              >
+                {messages.map((msg, i) => (
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <span style={{
+                      color: msg.role === "system" ? "cyan" : "yellow",
                       fontWeight: "bold",
-                      fontFamily: item.highlight ? "var(--font-pixel)" : "inherit",
-                      color: item.highlight ? "green" : "var(--text-dark)",
                     }}>
-                      {item.value}
-                    </div>
+                      {msg.role === "system" ? "SYSTEM" : "YOU"}:
+                    </span>
+                    <br />
+                    <span style={{
+                      color: msg.role === "system" ? "lime" : "white",
+                      whiteSpace: "pre-wrap",
+                    }}>
+                      {msg.content}
+                    </span>
                   </div>
                 ))}
-              </div>
-              <div className="inset-box" style={{ marginTop: 8, fontSize: 10, padding: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "green", fontWeight: "bold" }}>✓ On-Chain Verified</span>
-                <span style={{ color: "#888" }}>|</span>
-                <span style={{ color: "#888", fontFamily: "var(--font-pixel)", fontSize: 12 }}>Escrow: 0x1a2b...ef89</span>
-                <span style={{ color: "#888" }}>|</span>
-                <span style={{ color: "#888" }}>Base L2</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ═══════ SECTION 3: SUBMIT YOUR PITCH ═══════ */}
-          <div className="win95-window">
-            <div style={{ background: "#800000", color: "white", padding: "2px 6px", margin: 2, fontSize: 11, fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>⚠ Section 3: Submit Your Pitch</span>
-              <span style={{ fontFamily: "var(--font-pixel)", color: "yellow", fontSize: 14 }}>
-                Prize: ${shark.stakedAmount.toLocaleString()}
-              </span>
-            </div>
-            <div style={{ padding: 10 }}>
-              <p style={{ fontSize: 12, marginBottom: 10, color: "#444" }}>
-                Fill out the fields below to submit your pitch to <strong>{shark.name}</strong>. If accepted, ${shark.stakedAmount.toLocaleString()} will be released from escrow directly to your wallet.
-              </p>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Project Name:</label>
-                  <input className="inset-input" type="text" placeholder="Your project name" style={{ width: "100%" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Website:</label>
-                  <input className="inset-input" type="text" placeholder="https://" style={{ width: "100%" }} />
-                </div>
+                <span className="blink" style={{ color: "lime" }}>█</span>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Vertical:</label>
-                  <select className="inset-input" style={{ width: "100%", padding: 2 }}>
-                    <option>DeFi / Financial Infrastructure</option>
-                    <option>AI + Web3</option>
-                    <option>Consumer / Social</option>
-                    <option>Gaming / Entertainment</option>
-                    <option>Infrastructure / Dev Tools</option>
-                    <option>RWA / Payments</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Stage:</label>
-                  <select className="inset-input" style={{ width: "100%", padding: 2 }}>
-                    <option>Idea / Pre-product</option>
-                    <option>MVP / Beta</option>
-                    <option>Live product with users</option>
-                    <option>Revenue generating</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Elevator Pitch (max 280 chars):</label>
-                <textarea className="inset-input" rows={3} maxLength={280} style={{ width: "100%", resize: "none", fontFamily: "inherit", fontSize: 12 }} placeholder="Describe your project in one paragraph..." />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>GitHub URL:</label>
-                  <input className="inset-input" type="text" placeholder="https://github.com/..." style={{ width: "100%" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Twitter / X:</label>
-                  <input className="inset-input" type="text" placeholder="@yourhandle" style={{ width: "100%" }} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ display: "block", fontSize: 11, marginBottom: 2, fontWeight: "bold" }}>Attachments:</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                  <div className="inset-box" style={{ textAlign: "center", padding: 12, cursor: "pointer", fontSize: 11, color: "#666" }}>
-                    📄 Pitch Deck<br /><span style={{ fontSize: 9 }}>.pdf / .ppt</span>
-                  </div>
-                  <div className="inset-box" style={{ textAlign: "center", padding: 12, cursor: "pointer", fontSize: 11, color: "#666" }}>
-                    📊 Financials<br /><span style={{ fontSize: 9 }}>.xls / .csv</span>
-                  </div>
-                  <div className="inset-box" style={{ textAlign: "center", padding: 12, cursor: "pointer", fontSize: 11, color: "#666" }}>
-                    📎 Other<br /><span style={{ fontSize: 9 }}>any file</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Wallet info */}
-              <div className="inset-box" style={{ padding: 6, marginBottom: 10, fontSize: 11, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontWeight: "bold" }}>Your Wallet:</span>
-                <span style={{ fontFamily: "var(--font-pixel)", fontSize: 13 }}>Not connected</span>
-                <button className="win95-btn" style={{ fontSize: 10, padding: "2px 8px", marginLeft: "auto" }}>
-                  Connect Wallet
-                </button>
-              </div>
-
-              {/* Submit */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <Link href="/"><button className="win95-btn" style={{ fontSize: 12, padding: "4px 16px" }}>Cancel</button></Link>
+              {/* Input area */}
+              <div style={{ padding: 4, display: "flex", gap: 4, alignItems: "flex-end" }}>
                 <button
                   className="win95-btn"
-                  style={{ fontSize: 12, fontWeight: "bold", padding: "4px 20px" }}
-                  onClick={() => alert("Pitch submitted! (Backend not yet connected — Supabase integration coming soon)")}
+                  style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
+                  onClick={handleFileDrop}
+                  title="Attach a file"
                 >
-                  Submit Pitch →
+                  📎
+                </button>
+                <textarea
+                  className="inset-input"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Describe your project... (Enter to send)"
+                  style={{ flex: 1, resize: "none", height: 36, fontFamily: "inherit", fontSize: 12 }}
+                />
+                <button
+                  className="win95-btn"
+                  style={{ fontSize: 11, padding: "4px 12px", fontWeight: "bold", flexShrink: 0 }}
+                  onClick={sendMessage}
+                >
+                  Send →
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
 
-        {/* Status bar */}
-        <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 10 }}>
-          <div className="status-bar-segment" style={{ flex: 2, fontSize: 11 }}>
-            {shark.dealsCompleted} deals | {shark.successRate}% success | Staked: ${shark.stakedAmount.toLocaleString()}
-          </div>
-          <div className="status-bar-segment" style={{ fontSize: 11 }}>
-            Status: OPEN
+          {/* Status */}
+          <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 10 }}>
+            <div className="status-bar-segment" style={{ fontSize: 11, flex: 1 }}>
+              {started ? `${messages.filter(m => m.role === "user").length} message(s) sent` : "Ready"}
+            </div>
+            <div className="status-bar-segment" style={{ fontSize: 11 }}>
+              Prize: ${shark.stakedAmount.toLocaleString()}
+            </div>
           </div>
         </div>
       </div>
