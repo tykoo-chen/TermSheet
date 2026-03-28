@@ -16,7 +16,7 @@ const MAX_INPUT_TOKENS = 500; // ~375 English words
 const SESSION_SECONDS = 5 * 60; // 5 minutes — default for timer init
 
 function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 3.5);
+  return Math.ceil(text.length / 4);
 }
 
 function formatTime(seconds: number): string {
@@ -51,7 +51,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     }
   }, [messages]);
 
-  // Check weekly limit from backend on mount
+  // Check weekly limit from backend on mount and restore session state
   useEffect(() => {
     if (!shark) return;
     const checkRateLimit = async () => {
@@ -61,17 +61,35 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
         const data = await res.json();
         if (data.blocked) {
           setBlocked(true);
+          return;
         }
         if (data.session_id) {
           setSessionId(data.session_id);
           setRoundsUsed(data.rounds_used ?? 0);
           setTimeLeft(data.time_left ?? SESSION_SECONDS);
           if (data.allowed && data.rounds_used > 0) {
+            // Restore conversation history from backend so LLM context is preserved
+            try {
+              const msgRes = await authFetch(`/api/session/${data.session_id}/messages`);
+              if (msgRes.ok) {
+                const dbMsgs: { role: string; content: string }[] = await msgRes.json();
+                const restored: Message[] = [
+                  { role: "assistant", content: shark.greeting },
+                ];
+                for (const m of dbMsgs) {
+                  restored.push({
+                    role: m.role as "user" | "assistant",
+                    content: m.content,
+                  });
+                }
+                setMessages(restored);
+              }
+            } catch { /* message restore failed — start with greeting only */ }
             setStarted(true);
           }
         }
       } catch {
-        // If backend is unreachable, allow pitch (backend will enforce anyway)
+        // Backend unreachable — stay on pre-pitch screen (backend will enforce on start)
       }
     };
     checkRateLimit();
@@ -118,6 +136,24 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
 
   const startPitch = async () => {
     if (blocked) return;
+    try {
+      const res = await authFetch(`/api/session/start`, {
+        method: "POST",
+        body: JSON.stringify({ shark_id: shark.id }),
+      });
+      if (res.status === 429) {
+        setBlocked(true);
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      setSessionId(data.session_id);
+      setTimeLeft(data.time_left);
+      setRoundsUsed(data.rounds_used);
+    } catch {
+      // Backend unreachable — don't start (session must exist server-side)
+      return;
+    }
     setStarted(true);
     setMessages([{ role: "assistant", content: shark.greeting }]);
   };
@@ -137,7 +173,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
         content: m.content,
       }));
 
-      const res = await authFetch(`/api/chat`, {
+      const res = await authFetch(`/api/chat/stream`, {
         method: "POST",
         body: JSON.stringify({
           shark_id: shark.id,
@@ -145,15 +181,57 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
           messages: apiMessages,
         }),
       });
+
       if (res.status === 429) {
         setSessionEnded(true);
         clearInterval(timerRef.current!);
         setLoading(false);
         return;
       }
-      const data = await res.json();
-      if (data.session_id) setSessionId(data.session_id);
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "..." }]);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      // Add empty assistant message, then stream tokens into it
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.token) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last && last.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, content: last.content + data.token };
+                  }
+                  return updated;
+                });
+              }
+              if (data.done && data.session_id) {
+                setSessionId(data.session_id);
+              }
+            } catch {
+              // skip malformed SSE lines
+            }
+          }
+        }
+      }
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", content: "Connection error. Try again." }]);
     }
@@ -167,42 +245,70 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleFileDrop = () => {
+  const handleFileDrop = async () => {
     if (sessionEnded) return;
     const fileName = "pitch_deck_v3.pdf";
     const userMsg: Message = { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] };
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setLoading(true);
     setRoundsUsed((r) => r + 1);
-    authFetch(`/api/chat`, {
-      method: "POST",
-      body: JSON.stringify({
-        shark_id: shark.id,
-        session_id: sessionId,
-        messages: [...messages, userMsg].map((m) => ({
-          role: m.role === "user" ? "user" as const : "assistant" as const,
-          content: m.content,
-        })),
-      }),
-    })
-      .then((res) => {
-        if (res.status === 429) {
-          setSessionEnded(true);
-          clearInterval(timerRef.current!);
-          throw new Error("rate-limited");
+    // Reuse sendMessage-style streaming by setting input and calling
+    const fakeInput = input;
+    setInput("");
+    try {
+      const apiMessages = newMessages.map((m) => ({
+        role: m.role === "user" ? "user" as const : "assistant" as const,
+        content: m.content,
+      }));
+      const res = await authFetch(`/api/chat/stream`, {
+        method: "POST",
+        body: JSON.stringify({
+          shark_id: shark.id,
+          session_id: sessionId,
+          messages: apiMessages,
+        }),
+      });
+      if (res.status === 429) {
+        setSessionEnded(true);
+        clearInterval(timerRef.current!);
+        setLoading(false);
+        return;
+      }
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (reader) {
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.token) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last && last.role === "assistant") {
+                    updated[updated.length - 1] = { ...last, content: last.content + data.token };
+                  }
+                  return updated;
+                });
+              }
+              if (data.done && data.session_id) setSessionId(data.session_id);
+            } catch { /* skip */ }
+          }
         }
-        return res.json();
-      })
-      .then((data) => {
-        if (data.session_id) setSessionId(data.session_id);
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "Got it." }]);
-      })
-      .catch((err) => {
-        if (err.message !== "rate-limited") {
-          setMessages((prev) => [...prev, { role: "assistant", content: "File received. Continue your pitch." }]);
-        }
-      })
-      .finally(() => setLoading(false));
+      }
+    } catch {
+      setMessages((prev) => [...prev, { role: "assistant", content: "File received. Continue your pitch." }]);
+    }
+    setLoading(false);
   };
 
   // --- Blocked: already pitched this week ---

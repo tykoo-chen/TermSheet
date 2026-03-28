@@ -40,6 +40,7 @@ def _build_llm():
         return ChatXAI(
             model="grok-4-1-fast-reasoning",
             xai_api_key=settings.xai_api_key,
+            streaming=True,
         )
 
     # default: openai
@@ -48,6 +49,7 @@ def _build_llm():
     return ChatOpenAI(
         model="gpt-4o-mini",
         api_key=settings.openai_api_key,
+        streaming=True,
     )
 
 

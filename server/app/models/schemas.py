@@ -21,3 +21,19 @@ class RateLimitStatus(BaseModel):
     rounds_max: int = 8
     time_left: int = 300  # seconds remaining in session
     session_id: str | None = None
+
+
+class StartSessionRequest(BaseModel):
+    shark_id: str
+
+
+class StartSessionResponse(BaseModel):
+    session_id: str
+    time_left: int
+    rounds_used: int
+    rounds_max: int
+
+
+class MessageOut(BaseModel):
+    role: str
+    content: str
