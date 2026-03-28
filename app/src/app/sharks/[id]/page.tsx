@@ -45,6 +45,9 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   // Backend session tracking
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Deal outcome: null | "invest" | "pass"
+  const [dealOutcome, setDealOutcome] = useState<string | null>(null);
+
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -222,6 +225,11 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                   }
                   return updated;
                 });
+              }
+              if (data.deal) {
+                setDealOutcome(data.deal);
+                setSessionEnded(true);
+                clearInterval(timerRef.current!);
               }
               if (data.done && data.session_id) {
                 setSessionId(data.session_id);
@@ -517,8 +525,23 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 ))}
                 {loading && <span style={{ color: "cyan" }}>typing</span>}
                 {sessionEnded && (
-                  <div style={{ color: "red", marginTop: 8, fontWeight: "bold" }}>
-                    ── SESSION ENDED ── Come back next week to pitch again.
+                  <div style={{ marginTop: 12, fontWeight: "bold", padding: 8 }}>
+                    {dealOutcome === "invest" ? (
+                      <div style={{ color: "lime", border: "1px solid lime", padding: 8 }}>
+                        ═══ DEAL CONFIRMED ═══<br />
+                        {shark.name} is investing ${shark.stakedAmount.toLocaleString()}!<br />
+                        Send your USDC wallet address below to receive the funds.
+                      </div>
+                    ) : dealOutcome === "pass" ? (
+                      <div style={{ color: "red" }}>
+                        ═══ DEAL PASSED ═══<br />
+                        {shark.name} has passed on your pitch. Come back next week.
+                      </div>
+                    ) : (
+                      <div style={{ color: "red" }}>
+                        ── SESSION ENDED ── Come back next week to pitch again.
+                      </div>
+                    )}
                   </div>
                 )}
                 <span className="blink" style={{ color: "lime" }}>█</span>

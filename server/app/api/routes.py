@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage, ToolMessage
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -408,6 +408,7 @@ async def chat_stream(
 
     async def event_generator():
         full_reply = []
+        deal_decision = None  # "pass" or "invest"
         config = {"configurable": {"thread_id": thread_id}}
 
         async for chunk, metadata in graph.astream(
@@ -415,15 +416,27 @@ async def chat_stream(
             config=config,
             stream_mode="messages",
         ):
+            # Stream AI content tokens
             if isinstance(chunk, AIMessageChunk) and chunk.content:
                 full_reply.append(chunk.content)
                 yield f"data: {json.dumps({'token': chunk.content})}\n\n"
 
-        # Send final event with metadata
+            # Detect tool results for deal decisions
+            if isinstance(chunk, ToolMessage) and chunk.content:
+                if "[DEAL_PASSED]" in chunk.content:
+                    deal_decision = "pass"
+                elif "[DEAL_CONFIRMED]" in chunk.content:
+                    deal_decision = "invest"
+
         reply = "".join(full_reply)
+
+        # Emit deal event if a decision was made
+        if deal_decision:
+            yield f"data: {json.dumps({'deal': deal_decision})}\n\n"
+
         yield f"data: {json.dumps({'done': True, 'session_id': session_id_str, 'thread_id': thread_id})}\n\n"
 
-        # Persist assistant reply (use a new db session since the original is closed)
+        # Persist and update session status
         async with async_session() as db2:
             db2.add(
                 Message(
@@ -432,6 +445,15 @@ async def chat_stream(
                     content=reply,
                 )
             )
+            if deal_decision:
+                stmt = select(Session).where(Session.id == uuid.UUID(session_id_str))
+                result = await db2.execute(stmt)
+                sess = result.scalar_one_or_none()
+                if sess:
+                    sess.status = (
+                        SessionStatus.PASS if deal_decision == "invest"
+                        else SessionStatus.REJECT
+                    )
             await db2.commit()
 
     return StreamingResponse(
