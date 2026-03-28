@@ -23,7 +23,6 @@ export default function Navbar() {
 
   const navItems = [
     { href: "/", label: "Shark Tank", taskLabel: "Shark Tank" },
-    { href: "/dashboard", label: "Dashboard", taskLabel: "Dashboard" },
   ];
 
   return (
