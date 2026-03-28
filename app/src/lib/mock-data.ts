@@ -36,7 +36,7 @@ export const sharks: Shark[] = [
     title: "CEO & President, Y Combinator",
     bio: "CEO of Y Combinator. Co-founded Initialized Capital ($4B+ AUM). Former partner at YC. Early engineer at Palantir. Designer-turned-engineer-turned-VC. San Francisco's most outspoken tech advocate. Fights for builders and against bureaucracy.",
     stakedAmount: 5000,
-    sectors: ["AI", "Dev Tools", "B2B SaaS"],
+    sectors: ["AI Agents", "AI Infra", "Security"],
     stage: "Pre-seed",
     valuationRange: "$1M - $5M",
     dealType: "SAFE",
@@ -44,7 +44,7 @@ export const sharks: Shark[] = [
     successRate: 92,
     totalDeployed: 4200000000,
     joinedDate: "2024-01",
-    thesis: "The world is being remade by technology. I back ambitious misfits and first-principles thinkers building things nobody else sees yet. Really good engineers are going to go and remake all of the planets. Don't tell me there are too few good ideas — go outside, there's a billion problems to solve.",
+    thesis: "AI is the defining technology of our generation. YC's winter 2025 batch is growing 10% per week — the fastest ever — because of AI. I'm backing AI agents that democratize services only the rich had before: accountants, lawyers, tutors. Plus AI infrastructure and security. Go outside — there's a billion problems to solve.",
     personality: `You are Garry Tan, CEO of Y Combinator. You are direct, passionate about builders, and impatient with bullshit.
 
 PERSONALITY TRAITS:
@@ -88,7 +88,7 @@ SPEAKING STYLE: Direct, sometimes profane, deeply passionate. You drop truth bom
     title: "Co-founder & GP, Andreessen Horowitz (a16z)",
     bio: "Co-founded Netscape (invented the web browser). Co-founded a16z, one of the most powerful VC firms in the world ($42B+ AUM). Author of the Techno-Optimist Manifesto. Board member at Meta. The loudest voice in Silicon Valley for building the future — at any cost.",
     stakedAmount: 10000,
-    sectors: ["AI", "Crypto/Web3", "Infrastructure"],
+    sectors: ["AI", "Crypto", "American Dynamism"],
     stage: "Seed",
     valuationRange: "$5M - $20M",
     dealType: "Token Warrant / Equity",
@@ -96,7 +96,7 @@ SPEAKING STYLE: Direct, sometimes profane, deeply passionate. You drop truth bom
     successRate: 85,
     totalDeployed: 42000000000,
     joinedDate: "2024-01",
-    thesis: "Software is eating the world. Now AI is eating software. I believe technology is the primary driver of human progress. We are NOT in a tech bubble — we are in a tech revolution. I want founders who believe the future can be radically better and are willing to build it, no matter what the establishment says.",
+    thesis: "Software ate the world. Now AI is eating software. We just raised $15B — 18% of all US venture dollars in 2025. We're all-in on AI, crypto, and American Dynamism: defense, aerospace, manufacturing, energy. We invest in companies that defend the nation and build the future. It's time to build.",
     personality: `You are Marc Andreessen, co-founder of a16z and Netscape. You are a techno-optimist extremist with zero patience for doomers.
 
 PERSONALITY TRAITS:
@@ -141,7 +141,7 @@ SPEAKING STYLE: Professorial but intense. You cite economics, philosophy (Hayek,
     title: "Founder & CEO, Social Capital",
     bio: "Sri Lankan immigrant. Former VP of Growth at Facebook (drove it from 50M to 700M users). Founded Social Capital. All-In Podcast host. Golden State Warriors co-owner. The VC industry's biggest internal critic. Speaks uncomfortable truths that most VCs won't say out loud.",
     stakedAmount: 8000,
-    sectors: ["Climate Tech", "Healthcare", "Fintech"],
+    sectors: ["AI", "Energy", "Defense"],
     stage: "Seed",
     valuationRange: "$3M - $15M",
     dealType: "SAFE",
@@ -149,7 +149,7 @@ SPEAKING STYLE: Professorial but intense. You cite economics, philosophy (Hayek,
     successRate: 78,
     totalDeployed: 3000000000,
     joinedDate: "2024-01",
-    thesis: "Most VCs are terrible at picking winners. The data proves it — there's almost no overlap in which firms backed the biggest outcomes. I look for companies solving fundamental human problems at scale: healthcare, climate, financial access. Not another social app. Not another SaaS dashboard. Real problems, real impact, real returns.",
+    thesis: "2024 was AI's breakout year — $150B in venture investment. But I'm not just chasing AI hype. I'm investing in AI inference (Groq), domestic energy production (Palmetto), and the creator economy. The real opportunity now is less software, more physical: manufacturing, industrials, energy, defense. Real assets, real returns.",
     personality: `You are Chamath Palihapitiya, founder of Social Capital and host of the All-In Podcast. You are brutally honest, data-driven, and contrarian.
 
 PERSONALITY TRAITS:
