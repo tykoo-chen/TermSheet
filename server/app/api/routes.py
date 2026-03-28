@@ -1,9 +1,9 @@
 import uuid
 
 from fastapi import APIRouter, Depends
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-from app.agent.graph import create_graph
+from app.agent.graph import create_graph, get_system_prompt
 from app.core.auth import get_current_user
 from app.models.schemas import ChatRequest, ChatResponse
 
@@ -35,8 +35,19 @@ async def chat(
     thread_id = request.thread_id or str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
 
+    # Build system prompt for the specific investor
+    system_prompt = get_system_prompt(request.shark_id)
+
+    # Convert frontend messages to LangChain format
+    lc_messages = [SystemMessage(content=system_prompt)]
+    for msg in request.messages:
+        if msg["role"] == "user":
+            lc_messages.append(HumanMessage(content=msg["content"]))
+        else:
+            lc_messages.append(AIMessage(content=msg["content"]))
+
     result = graph.invoke(
-        {"messages": [HumanMessage(content=request.message)]},
+        {"messages": lc_messages},
         config=config,
     )
 

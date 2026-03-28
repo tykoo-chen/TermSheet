@@ -2,7 +2,10 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase";
 import AuthGuard from "@/components/AuthGuard";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -39,17 +42,26 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session?.access_token}`,
+    };
+  };
+
   const startPitch = async () => {
     setStarted(true);
     setLoading(true);
 
-    // Get the investor's opening line from Grok
+    // Get the investor's opening line
     try {
-      const res = await fetch("/api/chat", {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
-          sharkId: shark.id,
+          shark_id: shark.id,
           messages: [
             { role: "user", content: "A founder has just entered your pitch room. Introduce yourself in character and ask them what they're building. Keep it to 2-3 sentences. Reference one of your famous quotes." },
           ],
@@ -72,17 +84,17 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     setLoading(true);
 
     try {
-      // Build conversation history for Grok (convert "assistant" display role to API format)
+      const headers = await getAuthHeaders();
       const apiMessages = newMessages.map((m) => ({
         role: m.role === "user" ? "user" as const : "assistant" as const,
         content: m.content,
       }));
 
-      const res = await fetch("/api/chat", {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
-          sharkId: shark.id,
+          shark_id: shark.id,
           messages: apiMessages,
         }),
       });
@@ -107,17 +119,18 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     setMessages((prev) => [...prev, userMsg]);
     // Tell the AI about the file
     setLoading(true);
-    fetch("/api/chat", {
+    getAuthHeaders().then((headers) =>
+    fetch(`${API_BASE}/api/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
-        sharkId: shark.id,
+        shark_id: shark.id,
         messages: [...messages, userMsg].map((m) => ({
           role: m.role === "user" ? "user" as const : "assistant" as const,
           content: m.content,
         })),
       }),
-    })
+    }))
       .then((res) => res.json())
       .then((data) => {
         setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "Got it." }]);
