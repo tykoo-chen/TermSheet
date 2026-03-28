@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ConnectButton } from "thirdweb/react";
+import { ConnectButton, useActiveAccount } from "thirdweb/react";
 import { inAppWallet, createWallet } from "thirdweb/wallets";
 import { client } from "@/lib/thirdweb";
 import { base } from "thirdweb/chains";
@@ -20,6 +20,7 @@ const wallets = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const account = useActiveAccount();
   const [time, setTime] = useState("");
 
   useEffect(() => {
@@ -94,13 +95,16 @@ export default function Navbar() {
               },
             }}
             detailsButton={{
-              style: {
-                fontSize: 11,
-                padding: "2px 10px",
-                height: 22,
-                minWidth: 0,
-                fontFamily: "inherit",
-              },
+              render: () => (
+                <button
+                  className="win95-btn"
+                  style={{ fontSize: 11, padding: "2px 8px", height: 22, minWidth: 0, fontFamily: "inherit", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
+                  {account
+                    ? `${account.address.slice(0, 6)}...${account.address.slice(-4)}`
+                    : "Wallet"}
+                </button>
+              ),
             }}
           />
         )}

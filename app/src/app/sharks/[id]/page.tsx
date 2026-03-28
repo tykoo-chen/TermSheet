@@ -20,7 +20,7 @@ interface Message {
   attachments?: string[];
 }
 
-const SESSION_SECONDS = 5 * 60;
+const SESSION_SECONDS = 10 * 60;
 const MAX_INPUT_TOKENS = 500;
 
 function estimateTokens(text: string): number {
@@ -60,6 +60,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Session identity
   const sessionIdRef = useRef<string>("");
@@ -220,8 +221,25 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
 
   const handleFileDrop = () => {
     if (sessionEnded) return;
-    const fileName = "pitch_deck_v3.pdf";
-    const userMsg: Message = { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] };
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || sessionEnded) return;
+    e.target.value = "";
+
+    let fileContent = "";
+    const isText = file.type.startsWith("text/") || /\.(txt|md|csv|json|ts|js|py|html|css)$/i.test(file.name);
+    if (isText && file.size < 50000) {
+      fileContent = await file.text();
+    }
+
+    const summary = fileContent
+      ? `📎 Attached: ${file.name}\n\n[File contents below]\n${fileContent.slice(0, 2000)}${fileContent.length > 2000 ? "\n...(truncated)" : ""}`
+      : `📎 Attached: ${file.name} (${(file.size / 1024).toFixed(1)} KB, ${file.type || "binary"})`;
+
+    const userMsg: Message = { role: "user", content: summary, attachments: [file.name] };
     const nextRound = roundNumber + 1;
     setRoundNumber(nextRound);
     setMessages((prev) => [...prev, userMsg]);
@@ -431,7 +449,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                   If {shark.name} accepts, ${shark.stakedAmount.toLocaleString()} USDC goes to your wallet.
                 </p>
                 <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 16, textAlign: "left", lineHeight: 1.8 }}>
-                  <div>⏱ <strong>Session limit:</strong> 5 minutes</div>
+                  <div>⏱ <strong>Session limit:</strong> 10 minutes</div>
                   <div>📝 <strong>Per message:</strong> ~500 tokens (~375 words)</div>
                   <div>📅 <strong>Frequency:</strong> 1 pitch per investor per week</div>
                   <div>💰 <strong>Settlement:</strong> USDC on Base (on-chain)</div>
@@ -514,12 +532,19 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
               {/* Input area */}
               {!sessionEnded ? (
                 <div style={{ padding: 4, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.txt,.md,.csv,.json,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg"
+                    style={{ display: "none" }}
+                    onChange={handleFileSelected}
+                  />
                   <div style={{ display: "flex", gap: 4, alignItems: "flex-end" }}>
                     <button
                       className="win95-btn"
                       style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
                       onClick={handleFileDrop}
-                      title="Attach a file"
+                      title="Attach file (PDF, TXT, CSV, images...)"
                     >
                       📎
                     </button>
@@ -572,8 +597,8 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
           )}
 
           {/* Status bar */}
-          <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 6, alignItems: "center" }}>
-            <div className="status-bar-segment" style={{ fontSize: 11, flex: 1 }}>
+          <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 6, alignItems: "center", overflow: "hidden" }}>
+            <div className="status-bar-segment" style={{ fontSize: 11, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {!started
                 ? "Ready"
                 : decision === "ACCEPT"
