@@ -6,13 +6,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
+from app.core.config import get_settings
+
+settings = get_settings()
 
 app = FastAPI(title="TermSheet API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,  # Bearer tokens, not cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )

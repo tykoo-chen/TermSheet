@@ -17,15 +17,15 @@ router = APIRouter()
 
 graph = create_graph()
 
-# ── Rate-limit constants (mirrored from frontend) ──────────────────────────
-MAX_ROUNDS = 8
+# ── Rate-limit constants ────────────────────────────────────────────────────
+MAX_ROUNDS = 8          # real user messages (excludes bootstrap prompt)
 MAX_INPUT_TOKENS = 500
 SESSION_SECONDS = 5 * 60  # 5 minutes
 
 
 def _estimate_tokens(text: str) -> int:
     """Rough token estimate: ~1 token per 3.5 chars."""
-    return -(-len(text) // 3)  # ceil division by ~3.5 approximated as 3
+    return -(-len(text) // 3)
 
 
 def _week_start() -> datetime:
@@ -35,10 +35,21 @@ def _week_start() -> datetime:
     return monday.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-async def _get_weekly_session(
-    db: AsyncSession, user_id: str, shark_id: str
+async def _resolve_session(
+    db: AsyncSession, user_id: str, shark_id: str, session_id: str | None
 ) -> Session | None:
-    """Find an existing session for this user+investor created this week."""
+    """Look up session by ID first, then fall back to weekly lookup."""
+    if session_id:
+        stmt = select(Session).where(
+            Session.id == uuid.UUID(session_id),
+            Session.user_id == uuid.UUID(user_id),  # ensure ownership
+        )
+        result = await db.execute(stmt)
+        session = result.scalar_one_or_none()
+        if session:
+            return session
+
+    # Fall back: find this week's session for the user + investor
     stmt = (
         select(Session)
         .where(
@@ -51,6 +62,32 @@ async def _get_weekly_session(
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def _count_user_rounds(db: AsyncSession, session_id: uuid.UUID) -> int:
+    """Count real user messages in a session (excludes the bootstrap prompt)."""
+    stmt = (
+        select(func.count())
+        .select_from(Message)
+        .where(
+            Message.session_id == session_id,
+            Message.role == MessageRole.USER,
+        )
+    )
+    result = await db.execute(stmt)
+    total = result.scalar() or 0
+    # The first "user" message is the bootstrap prompt (investor intro request),
+    # not a real user round — subtract 1, floor at 0.
+    return max(total - 1, 0)
+
+
+def _session_expired(session: Session) -> bool:
+    now = datetime.now(timezone.utc)
+    created = session.created_at
+    # Handle naive datetimes (SQLite dev) by assuming UTC
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return (now - created).total_seconds() > SESSION_SECONDS
 
 
 # ── Health ──────────────────────────────────────────────────────────────────
@@ -77,38 +114,35 @@ async def check_rate_limit(
     user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Check if the user can pitch this investor (weekly limit)."""
+    """Check if the user can pitch this investor this week."""
     user_id = user["sub"]
-    session = await _get_weekly_session(db, user_id, shark_id)
+    session = await _resolve_session(db, user_id, shark_id, None)
 
     if session is None:
         return RateLimitStatus(allowed=True, rounds_used=0, rounds_max=MAX_ROUNDS)
 
-    # Count user messages in this session
-    stmt = (
-        select(func.count())
-        .select_from(Message)
-        .where(
-            Message.session_id == session.id,
-            Message.role == MessageRole.USER,
-        )
-    )
-    result = await db.execute(stmt)
-    rounds_used = result.scalar() or 0
+    rounds_used = await _count_user_rounds(db, session.id)
 
-    session_ended = (
+    # Compute time_left from session created_at
+    created = session.created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    elapsed = (datetime.now(timezone.utc) - created).total_seconds()
+    time_left = max(int(SESSION_SECONDS - elapsed), 0)
+
+    ended = (
         session.status != SessionStatus.IN_PROGRESS
         or rounds_used >= MAX_ROUNDS
-        or (datetime.now(timezone.utc) - session.created_at).total_seconds()
-        > SESSION_SECONDS
+        or time_left == 0
     )
 
     return RateLimitStatus(
-        allowed=not session_ended or rounds_used == 0,
-        blocked=session_ended and rounds_used > 0,
+        allowed=not ended,
+        blocked=ended,
         rounds_used=rounds_used,
         rounds_max=MAX_ROUNDS,
-        session_id=str(session.id) if session else None,
+        time_left=time_left,
+        session_id=str(session.id),
     )
 
 
@@ -121,36 +155,25 @@ async def chat(
 ):
     user_id = user["sub"]
 
-    # ── Token limit check ───────────────────────────────────────────────
+    # ── Token limit on the latest user message ──────────────────────────
     user_messages = [m for m in request.messages if m["role"] == "user"]
     if user_messages:
-        latest_user_msg = user_messages[-1]["content"]
-        if _estimate_tokens(latest_user_msg) > MAX_INPUT_TOKENS:
+        latest_text = user_messages[-1]["content"]
+        if _estimate_tokens(latest_text) > MAX_INPUT_TOKENS:
             raise HTTPException(
                 status_code=422,
                 detail=f"Message exceeds {MAX_INPUT_TOKENS} token limit.",
             )
 
-    # ── Weekly rate limit ───────────────────────────────────────────────
-    session = await _get_weekly_session(db, user_id, request.shark_id)
+    # ── Resolve or create session ───────────────────────────────────────
+    is_new_session = False
+    session = await _resolve_session(
+        db, user_id, request.shark_id, request.session_id
+    )
 
     if session is not None:
-        # Count existing user rounds
-        stmt = (
-            select(func.count())
-            .select_from(Message)
-            .where(
-                Message.session_id == session.id,
-                Message.role == MessageRole.USER,
-            )
-        )
-        result = await db.execute(stmt)
-        rounds_used = result.scalar() or 0
-
-        # Check if session has expired
-        elapsed = (
-            datetime.now(timezone.utc) - session.created_at
-        ).total_seconds()
+        # Enforce limits on existing session
+        rounds_used = await _count_user_rounds(db, session.id)
 
         if session.status != SessionStatus.IN_PROGRESS:
             raise HTTPException(
@@ -164,7 +187,7 @@ async def chat(
                 status_code=429,
                 detail=f"Round limit reached ({MAX_ROUNDS}). Session ended.",
             )
-        if elapsed > SESSION_SECONDS:
+        if _session_expired(session):
             session.status = SessionStatus.PENDING
             await db.commit()
             raise HTTPException(
@@ -172,14 +195,15 @@ async def chat(
                 detail="Session time expired (5 min). Come back next week.",
             )
     else:
-        # First message this week → create session
+        # First pitch this week → create session
         session = Session(
             user_id=uuid.UUID(user_id),
             investor_id=request.shark_id,
             status=SessionStatus.IN_PROGRESS,
         )
         db.add(session)
-        await db.flush()  # get session.id
+        await db.flush()
+        is_new_session = True
 
     # ── Persist the latest user message ─────────────────────────────────
     if user_messages:
@@ -196,7 +220,6 @@ async def chat(
     config = {"configurable": {"thread_id": thread_id}}
 
     system_prompt = get_system_prompt(request.shark_id)
-
     lc_messages = [SystemMessage(content=system_prompt)]
     for msg in request.messages:
         if msg["role"] == "user":
@@ -208,7 +231,6 @@ async def chat(
         {"messages": lc_messages},
         config=config,
     )
-
     reply = result["messages"][-1].content
 
     # ── Persist assistant reply ─────────────────────────────────────────
@@ -221,4 +243,8 @@ async def chat(
     )
     await db.commit()
 
-    return ChatResponse(reply=reply, thread_id=thread_id)
+    return ChatResponse(
+        reply=reply,
+        session_id=str(session.id),
+        thread_id=thread_id,
+    )

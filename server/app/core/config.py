@@ -19,10 +19,18 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_jwt_secret: str = ""
 
+    # CORS — comma-separated origins, e.g. "http://localhost:3000,https://termsheet.app"
+    allow_origins: str = "http://localhost:3000"
+
     @property
     def db_url(self) -> str:
         """DATABASE_URI (Supabase) takes precedence; falls back to local DATABASE_URL."""
         return self.database_uri or self.database_url
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse comma-separated ALLOW_ORIGINS into a list."""
+        return [o.strip() for o in self.allow_origins.split(",") if o.strip()]
 
     class Config:
         env_file = (".env", ".env.local")

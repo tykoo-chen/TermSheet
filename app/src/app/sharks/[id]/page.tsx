@@ -2,10 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
-import { supabase } from "@/lib/supabase";
+import { authFetch } from "@/lib/auth-fetch";
 import AuthGuard from "@/components/AuthGuard";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -14,18 +12,11 @@ interface Message {
 }
 
 const MAX_ROUNDS = 8;
-const SESSION_SECONDS = 5 * 60; // 5 minutes
 const MAX_INPUT_TOKENS = 500; // ~375 English words
+const SESSION_SECONDS = 5 * 60; // 5 minutes — default for timer init
 
 function estimateTokens(text: string): number {
-  // Rough estimate: 1 token ≈ 4 chars for English, ~2 chars for Chinese
   return Math.ceil(text.length / 3.5);
-}
-
-function getWeekKey(sharkId: string): string {
-  const now = new Date();
-  const weekNum = Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000));
-  return `termsheet-pitch-${sharkId}-week-${weekNum}`;
 }
 
 function formatTime(seconds: number): string {
@@ -51,19 +42,39 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const inputTokens = estimateTokens(input);
   const inputOverLimit = inputTokens > MAX_INPUT_TOKENS;
 
+  // Backend session tracking
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Check weekly limit on mount
+  // Check weekly limit from backend on mount
   useEffect(() => {
     if (!shark) return;
-    const key = getWeekKey(shark.id);
-    if (localStorage.getItem(key) === "1") {
-      setBlocked(true);
-    }
+    const checkRateLimit = async () => {
+      try {
+        const res = await authFetch(`/api/rate-limit/${shark.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.blocked) {
+          setBlocked(true);
+        }
+        if (data.session_id) {
+          setSessionId(data.session_id);
+          setRoundsUsed(data.rounds_used ?? 0);
+          setTimeLeft(data.time_left ?? SESSION_SECONDS);
+          if (data.allowed && data.rounds_used > 0) {
+            setStarted(true);
+          }
+        }
+      } catch {
+        // If backend is unreachable, allow pitch (backend will enforce anyway)
+      }
+    };
+    checkRateLimit();
   }, [shark]);
 
   // Countdown timer (starts when pitch starts)
@@ -105,34 +116,30 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${session?.access_token}`,
-    };
-  };
-
   const startPitch = async () => {
     if (blocked) return;
-    // Mark this week's pitch as used
-    localStorage.setItem(getWeekKey(shark.id), "1");
     setStarted(true);
     setLoading(true);
 
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await authFetch(`/api/chat`, {
         method: "POST",
-        headers,
         body: JSON.stringify({
           shark_id: shark.id,
+          session_id: sessionId,
           messages: [
             { role: "user", content: "A founder has just entered your pitch room. Introduce yourself in character and ask them what they're building. Keep it to 2-3 sentences. Reference one of your famous quotes." },
           ],
         }),
       });
+      if (res.status === 429) {
+        setBlocked(true);
+        setStarted(false);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
+      if (data.session_id) setSessionId(data.session_id);
       setMessages([{ role: "assistant", content: data.reply || "What are you building? Tell me." }]);
     } catch {
       setMessages([{ role: "assistant", content: `Pitch session with ${shark.name}. What are you building?` }]);
@@ -150,21 +157,27 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     setRoundsUsed((r) => r + 1);
 
     try {
-      const headers = await getAuthHeaders();
       const apiMessages = newMessages.map((m) => ({
         role: m.role === "user" ? "user" as const : "assistant" as const,
         content: m.content,
       }));
 
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await authFetch(`/api/chat`, {
         method: "POST",
-        headers,
         body: JSON.stringify({
           shark_id: shark.id,
+          session_id: sessionId,
           messages: apiMessages,
         }),
       });
+      if (res.status === 429) {
+        setSessionEnded(true);
+        clearInterval(timerRef.current!);
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
+      if (data.session_id) setSessionId(data.session_id);
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "..." }]);
     } catch {
       setMessages((prev) => [...prev, { role: "assistant", content: "Connection error. Try again." }]);
@@ -185,24 +198,34 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     const userMsg: Message = { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] };
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
-    getAuthHeaders().then((headers) =>
-    fetch(`${API_BASE}/api/chat`, {
+    setRoundsUsed((r) => r + 1);
+    authFetch(`/api/chat`, {
       method: "POST",
-      headers,
       body: JSON.stringify({
         shark_id: shark.id,
+        session_id: sessionId,
         messages: [...messages, userMsg].map((m) => ({
           role: m.role === "user" ? "user" as const : "assistant" as const,
           content: m.content,
         })),
       }),
-    }))
-      .then((res) => res.json())
+    })
+      .then((res) => {
+        if (res.status === 429) {
+          setSessionEnded(true);
+          clearInterval(timerRef.current!);
+          throw new Error("rate-limited");
+        }
+        return res.json();
+      })
       .then((data) => {
+        if (data.session_id) setSessionId(data.session_id);
         setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "Got it." }]);
       })
-      .catch(() => {
-        setMessages((prev) => [...prev, { role: "assistant", content: "File received. Continue your pitch." }]);
+      .catch((err) => {
+        if (err.message !== "rate-limited") {
+          setMessages((prev) => [...prev, { role: "assistant", content: "File received. Continue your pitch." }]);
+        }
       })
       .finally(() => setLoading(false));
   };
