@@ -133,13 +133,13 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
             <span>Term Sheet</span>
           </div>
           <div style={{ padding: 8 }}>
-            {[
-              { label: "Staked", value: `$${shark.stakedAmount.toLocaleString()}`, color: "green", big: true },
-              { label: "Valuation", value: shark.valuationRange },
-              { label: "Deal Type", value: shark.dealType },
-              { label: "Stage", value: shark.stage },
-              { label: "Sectors", value: shark.sectors.join(", ") },
-            ].map((item) => (
+            {([
+              { label: "Staked", value: `$${shark.stakedAmount.toLocaleString()}`, color: "green" as const, big: true },
+              { label: "Valuation", value: shark.valuationRange, color: "" as const, big: false },
+              { label: "Deal Type", value: shark.dealType, color: "" as const, big: false },
+              { label: "Stage", value: shark.stage, color: "" as const, big: false },
+              { label: "Sectors", value: shark.sectors.join(", "), color: "" as const, big: false },
+            ]).map((item) => (
               <div key={item.label} style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -151,9 +151,9 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <span style={{ color: "#666" }}>{item.label}</span>
                 <span style={{
                   fontWeight: "bold",
-                  color: (item as any).color || "var(--text-dark)",
-                  fontFamily: (item as any).big ? "var(--font-pixel)" : "inherit",
-                  fontSize: (item as any).big ? 16 : 11,
+                  color: item.color || "var(--text-dark)",
+                  fontFamily: item.big ? "var(--font-pixel)" : "inherit",
+                  fontSize: item.big ? 16 : 11,
                 }}>
                   {item.value}
                 </span>
