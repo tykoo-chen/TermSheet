@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^9.0.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
+    "stripe": "^21.0.1",
     "thirdweb": "^5.119.3"
   },
   "devDependencies": {

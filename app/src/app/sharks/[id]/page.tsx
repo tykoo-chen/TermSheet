@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { sharks } from "@/lib/mock-data";
 import { useActiveAccount, ConnectButton } from "thirdweb/react";
 import { inAppWallet, createWallet } from "thirdweb/wallets";
@@ -54,6 +55,7 @@ function ScoreBar({ score }: { score: number }) {
 export default function SharkProfile({ params }: { params: { id: string } }) {
   const shark = sharks.find((s) => s.id === params.id);
   const account = useActiveAccount();
+  const searchParams = useSearchParams();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -61,6 +63,10 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const [started, setStarted] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Payment state
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [pitchPaid, setPitchPaid] = useState(false);
 
   // Session identity
   const sessionIdRef = useRef<string>("");
@@ -92,6 +98,22 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [messages, showSettle]);
+
+  // Detect return from Stripe checkout
+  useEffect(() => {
+    const paid = searchParams.get("pitch_paid");
+    const returnedSessionId = searchParams.get("pitch_session");
+    if (paid === "1" && returnedSessionId) {
+      sessionIdRef.current = returnedSessionId;
+      setPitchPaid(true);
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("pitch_paid");
+      url.searchParams.delete("session_id");
+      url.searchParams.delete("pitch_session");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
 
   // Check weekly limit on mount (disabled for dev/testing)
   // useEffect(() => {
@@ -147,9 +169,39 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
+  const handlePayAndPitch = async () => {
+    if (!shark) return;
+    // If Stripe not configured, skip payment gate (dev mode)
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      setPitchPaid(true);
+      return;
+    }
+    const newSessionId = crypto.randomUUID();
+    sessionIdRef.current = newSessionId;
+    setPaymentLoading(true);
+    try {
+      const res = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sharkId: shark.id, sharkName: shark.name, sessionId: newSessionId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        // Stripe not configured server-side → skip gate
+        setPitchPaid(true);
+      }
+    } catch {
+      setPitchPaid(true); // fallback: skip gate on error
+    }
+    setPaymentLoading(false);
+  };
+
   const startPitch = async () => {
     if (blocked) return;
-    sessionIdRef.current = crypto.randomUUID();
+    // sessionId may already be set if returning from Stripe checkout
+    if (!sessionIdRef.current) sessionIdRef.current = crypto.randomUUID();
     localStorage.setItem(getWeekKey(shark.id), "1");
     setStarted(true);
     setLoading(true);
@@ -451,16 +503,34 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 16, textAlign: "left", lineHeight: 1.8 }}>
                   <div>⏱ <strong>Session limit:</strong> 10 minutes</div>
                   <div>📝 <strong>Per message:</strong> ~500 tokens (~375 words)</div>
-                  <div>📅 <strong>Frequency:</strong> 1 pitch per investor per week</div>
-                  <div>💰 <strong>Settlement:</strong> USDC on Base (on-chain)</div>
+                  <div>💳 <strong>Pitch fee:</strong> $1.00 USD (via Stripe)</div>
+                  <div>💰 <strong>If accepted:</strong> ${shark.stakedAmount.toLocaleString()} USDC on Base</div>
                 </div>
-                {!client || account ? (
+
+                {/* Step 1: must be signed in */}
+                {client && !account ? (
                   <div>
-                    {account && (
-                      <div style={{ fontSize: 10, color: "#666", marginBottom: 8, fontFamily: "var(--font-pixel)" }}>
-                        ✓ Signed in as {account.address.slice(0, 6)}...{account.address.slice(-4)}
-                      </div>
-                    )}
+                    <div style={{ fontSize: 11, color: "#c00", marginBottom: 10, fontWeight: "bold" }}>
+                      ① Sign in first — your wallet receives USDC if accepted
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+                      <ConnectButton
+                        client={client!}
+                        wallets={wallets}
+                        chain={base}
+                        connectButton={{ label: "Sign In to Continue →" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <Link href="/"><button className="win95-btn" style={{ fontSize: 12, padding: "4px 16px" }}>Back</button></Link>
+                    </div>
+                  </div>
+                ) : pitchPaid ? (
+                  /* Step 3: paid → start pitch */
+                  <div>
+                    <div style={{ fontSize: 11, color: "green", marginBottom: 10, fontWeight: "bold" }}>
+                      ✓ Payment received — ready to pitch!
+                    </div>
                     <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                       <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
                         Start Pitch →
@@ -469,19 +539,28 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                     </div>
                   </div>
                 ) : (
+                  /* Step 2: signed in → pay $1 */
                   <div>
-                    <div style={{ fontSize: 11, color: "#c00", marginBottom: 10, fontWeight: "bold" }}>
-                      ⚠ Sign in to pitch and receive USDC if accepted
+                    {account && (
+                      <div style={{ fontSize: 10, color: "#666", marginBottom: 8, fontFamily: "var(--font-pixel)" }}>
+                        ✓ Signed in as {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: "#444", marginBottom: 10, lineHeight: 1.5 }}>
+                      Pay <strong>$1.00</strong> to start your pitch session.<br />
+                      <span style={{ color: "#888", fontSize: 10 }}>Refunded automatically if {shark.name} accepts.</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-                      <ConnectButton
-                        client={client!}
-                        wallets={wallets}
-                        chain={base}
-                        connectButton={{ label: "Sign In to Pitch →" }}
-                      />
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                      <button
+                        className="win95-btn"
+                        style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px", opacity: paymentLoading ? 0.6 : 1 }}
+                        onClick={handlePayAndPitch}
+                        disabled={paymentLoading}
+                      >
+                        {paymentLoading ? "Loading..." : "Pay $1 & Pitch →"}
+                      </button>
+                      <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }}>Back</button></Link>
                     </div>
-                    <Link href="/"><button className="win95-btn" style={{ fontSize: 12, padding: "4px 16px" }}>Back</button></Link>
                   </div>
                 )}
               </div>
