@@ -58,7 +58,7 @@ export default function Home() {
 
         {/* Investor Cards — larger, more content */}
         <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, height: "100%" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
             {filtered.map((shark) => (
               <Link key={shark.id} href={`/sharks/${shark.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                 <div className="win95-window" style={{ cursor: "pointer", height: "100%", display: "flex", flexDirection: "column" }}>
@@ -84,7 +84,7 @@ export default function Home() {
                       <img
                         src={shark.avatar}
                         alt={shark.name}
-                        style={{ width: 120, height: 120, borderRadius: 6, border: "3px inset", objectFit: "cover", margin: "0 auto" }}
+                        style={{ width: 200, height: 200, borderRadius: 6, border: "3px inset", objectFit: "cover", margin: "0 auto" }}
                       />
                     </div>
 
