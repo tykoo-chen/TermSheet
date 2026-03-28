@@ -9,6 +9,27 @@ interface Message {
   attachments?: string[];
 }
 
+const MAX_ROUNDS = 8;
+const SESSION_SECONDS = 5 * 60; // 5 minutes
+const MAX_INPUT_TOKENS = 500; // ~375 English words
+
+function estimateTokens(text: string): number {
+  // Rough estimate: 1 token ≈ 4 chars for English, ~2 chars for Chinese
+  return Math.ceil(text.length / 3.5);
+}
+
+function getWeekKey(sharkId: string): string {
+  const now = new Date();
+  const weekNum = Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000));
+  return `termsheet-pitch-${sharkId}-week-${weekNum}`;
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export default function SharkProfile({ params }: { params: { id: string } }) {
   const shark = sharks.find((s) => s.id === params.id);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -17,11 +38,53 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const [started, setStarted] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
+  // Rate limiting state
+  const [blocked, setBlocked] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [roundsUsed, setRoundsUsed] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(SESSION_SECONDS);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputTokens = estimateTokens(input);
+  const inputOverLimit = inputTokens > MAX_INPUT_TOKENS;
+
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Check weekly limit on mount
+  useEffect(() => {
+    if (!shark) return;
+    const key = getWeekKey(shark.id);
+    if (localStorage.getItem(key) === "1") {
+      setBlocked(true);
+    }
+  }, [shark]);
+
+  // Countdown timer (starts when pitch starts)
+  useEffect(() => {
+    if (!started || sessionEnded) return;
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          setSessionEnded(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current!);
+  }, [started, sessionEnded]);
+
+  // End session when rounds used up
+  useEffect(() => {
+    if (roundsUsed >= MAX_ROUNDS) {
+      setSessionEnded(true);
+      clearInterval(timerRef.current!);
+    }
+  }, [roundsUsed]);
 
   if (!shark) {
     return (
@@ -39,10 +102,12 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   }
 
   const startPitch = async () => {
+    if (blocked) return;
+    // Mark this week's pitch as used
+    localStorage.setItem(getWeekKey(shark.id), "1");
     setStarted(true);
     setLoading(true);
 
-    // Get the investor's opening line from Grok
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -63,15 +128,15 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || sessionEnded || inputOverLimit) return;
     const userMsg: Message = { role: "user", content: input };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+    setRoundsUsed((r) => r + 1);
 
     try {
-      // Build conversation history for Grok (convert "assistant" display role to API format)
       const apiMessages = newMessages.map((m) => ({
         role: m.role === "user" ? "user" as const : "assistant" as const,
         content: m.content,
@@ -101,10 +166,10 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   };
 
   const handleFileDrop = () => {
+    if (sessionEnded) return;
     const fileName = "pitch_deck_v3.pdf";
     const userMsg: Message = { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] };
     setMessages((prev) => [...prev, userMsg]);
-    // Tell the AI about the file
     setLoading(true);
     fetch("/api/chat", {
       method: "POST",
@@ -126,6 +191,43 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
       })
       .finally(() => setLoading(false));
   };
+
+  // --- Blocked: already pitched this week ---
+  if (blocked) {
+    return (
+      <div style={{ height: "calc(100vh - 30px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+        <div className="win95-window" style={{ width: 420 }}>
+          <div className="win95-title-bar">
+            <span>Access Denied — Rate Limit</span>
+            <div style={{ display: "flex", gap: 2 }}>
+              <div className="sys-btn"><Link href="/" style={{ color: "black", textDecoration: "none" }}>X</Link></div>
+            </div>
+          </div>
+          <div style={{ padding: 20 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
+              <svg viewBox="0 0 32 32" width="40" height="40" style={{ flexShrink: 0 }}>
+                <circle cx="16" cy="16" r="14" fill="red" stroke="#800" />
+                <path d="M11 11l10 10M21 11l-10 10" stroke="white" strokeWidth="3" />
+              </svg>
+              <div>
+                <p style={{ fontFamily: "var(--font-pixel)", fontSize: 16, marginBottom: 8 }}>
+                  WEEKLY LIMIT REACHED
+                </p>
+                <p style={{ fontSize: 12, color: "#444", lineHeight: 1.6 }}>
+                  You've already pitched <strong>{shark.name}</strong> this week.<br />
+                  Each investor allows <strong>1 pitch per week</strong>.<br /><br />
+                  Come back next week to try again.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <Link href="/"><button className="win95-btn" style={{ width: 120 }}>← Back</button></Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: "calc(100vh - 30px)", padding: 8, display: "flex", gap: 8 }}>
@@ -166,13 +268,13 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
             <span>Term Sheet</span>
           </div>
           <div style={{ padding: 8 }}>
-            {([
+            {(([
               { label: "Staked", value: `$${shark.stakedAmount.toLocaleString()}`, color: "green" as const, big: true },
               { label: "Valuation", value: shark.valuationRange, color: "" as const, big: false },
               { label: "Deal Type", value: shark.dealType, color: "" as const, big: false },
               { label: "Stage", value: shark.stage, color: "" as const, big: false },
               { label: "Sectors", value: shark.sectors.join(", "), color: "" as const, big: false },
-            ]).map((item) => (
+            ] as { label: string; value: string; color: "green" | ""; big: boolean }[])).map((item) => (
               <div key={item.label} style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -240,13 +342,18 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <p style={{ fontFamily: "var(--font-pixel)", fontSize: 20, marginBottom: 8 }}>
                   Ready to pitch {shark.name}?
                 </p>
-                <p style={{ fontSize: 12, color: "#666", marginBottom: 16, lineHeight: 1.5 }}>
-                  You&apos;ll have a conversation to describe your project.
-                  <br />
-                  No forms — just talk naturally and attach files.
-                  <br />
+                <p style={{ fontSize: 12, color: "#666", marginBottom: 12, lineHeight: 1.5 }}>
+                  You&apos;ll have a conversation to describe your project.<br />
+                  No forms — just talk naturally and attach files.<br />
                   If {shark.name} accepts, ${shark.stakedAmount.toLocaleString()} goes to your wallet.
                 </p>
+                {/* Session limits info */}
+                <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 16, textAlign: "left", lineHeight: 1.8 }}>
+                  <div>⏱ <strong>Session limit:</strong> 5 minutes</div>
+                  <div>💬 <strong>Message rounds:</strong> {MAX_ROUNDS} max</div>
+                  <div>📝 <strong>Per message:</strong> ~500 tokens (~375 words)</div>
+                  <div>📅 <strong>Frequency:</strong> 1 pitch per investor per week</div>
+                </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                   <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
                     Start Pitch →
@@ -289,43 +396,92 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                   </div>
                 ))}
                 {loading && <span style={{ color: "cyan" }}>typing</span>}
+                {sessionEnded && (
+                  <div style={{ color: "red", marginTop: 8, fontWeight: "bold" }}>
+                    ── SESSION ENDED ── Come back next week to pitch again.
+                  </div>
+                )}
                 <span className="blink" style={{ color: "lime" }}>█</span>
               </div>
 
               {/* Input area */}
-              <div style={{ padding: 4, display: "flex", gap: 4, alignItems: "flex-end" }}>
-                <button
-                  className="win95-btn"
-                  style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
-                  onClick={handleFileDrop}
-                  title="Attach a file"
-                >
-                  📎
-                </button>
-                <textarea
-                  className="inset-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Describe your project... (Enter to send)"
-                  style={{ flex: 1, resize: "none", height: 36, fontFamily: "inherit", fontSize: 12 }}
-                />
-                <button
-                  className="win95-btn"
-                  style={{ fontSize: 11, padding: "4px 12px", fontWeight: "bold", flexShrink: 0 }}
-                  onClick={sendMessage}
-                >
-                  Send →
-                </button>
-              </div>
+              {!sessionEnded ? (
+                <div style={{ padding: 4, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", gap: 4, alignItems: "flex-end" }}>
+                    <button
+                      className="win95-btn"
+                      style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
+                      onClick={handleFileDrop}
+                      title="Attach a file"
+                    >
+                      📎
+                    </button>
+                    <textarea
+                      className="inset-input"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Describe your project... (Enter to send)"
+                      style={{
+                        flex: 1,
+                        resize: "none",
+                        height: 36,
+                        fontFamily: "inherit",
+                        fontSize: 12,
+                        border: inputOverLimit ? "2px solid red" : undefined,
+                      }}
+                    />
+                    <button
+                      className="win95-btn"
+                      style={{ fontSize: 11, padding: "4px 12px", fontWeight: "bold", flexShrink: 0, opacity: inputOverLimit ? 0.5 : 1 }}
+                      onClick={sendMessage}
+                      disabled={inputOverLimit}
+                    >
+                      Send →
+                    </button>
+                  </div>
+                  {inputOverLimit && (
+                    <div style={{ fontSize: 10, color: "red", paddingLeft: 4 }}>
+                      ⚠ Message too long ({inputTokens} / {MAX_INPUT_TOKENS} tokens). Please shorten your message.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: 8, textAlign: "center" }}>
+                  <Link href="/"><button className="win95-btn" style={{ fontSize: 12, padding: "6px 20px" }}>← Back to Investors</button></Link>
+                </div>
+              )}
             </>
           )}
 
-          {/* Status */}
-          <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 10 }}>
+          {/* Status bar */}
+          <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 6 }}>
             <div className="status-bar-segment" style={{ fontSize: 11, flex: 1 }}>
-              {loading ? `${shark.name} is thinking...` : started ? `${messages.filter(m => m.role === "user").length} message(s) sent` : "Ready"}
+              {!started
+                ? "Ready"
+                : sessionEnded
+                ? "Session ended"
+                : loading
+                ? `${shark.name} is thinking...`
+                : `${messages.filter(m => m.role === "user").length} message(s) sent`}
             </div>
+            {started && !sessionEnded && (
+              <>
+                <div className="status-bar-segment" style={{
+                  fontSize: 11,
+                  color: timeLeft <= 60 ? "red" : "inherit",
+                  fontWeight: timeLeft <= 60 ? "bold" : "normal",
+                }}>
+                  ⏱ {formatTime(timeLeft)}
+                </div>
+                <div className="status-bar-segment" style={{
+                  fontSize: 11,
+                  color: roundsUsed >= MAX_ROUNDS - 2 ? "red" : "inherit",
+                }}>
+                  💬 {MAX_ROUNDS - roundsUsed} rounds left
+                </div>
+              </>
+            )}
             <div className="status-bar-segment" style={{ fontSize: 11 }}>
               Prize: ${shark.stakedAmount.toLocaleString()}
             </div>
