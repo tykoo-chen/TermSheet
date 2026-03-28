@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         return self.database_uri or self.database_url
 
     class Config:
-        env_file = ".env"
+        env_file = (".env", ".env.local")
 
 
 @lru_cache
