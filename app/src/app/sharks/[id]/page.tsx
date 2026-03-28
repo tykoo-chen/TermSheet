@@ -4,7 +4,7 @@ import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
 
 interface Message {
-  role: "system" | "user";
+  role: "system" | "user" | "assistant";
   content: string;
   attachments?: string[];
 }
@@ -13,6 +13,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const shark = sharks.find((s) => s.id === params.id);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -37,56 +38,59 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
-  // Personalized responses based on investor personality
-  const getResponses = () => {
-    if (shark.id === "garry-tan") return [
-      `Alright, I'm listening. But skip the buzzwords — what have you actually BUILT? Show me the product. I'm a designer and engineer, I can tell if it's real.`,
-      `OK, interesting. Who are your users? Have you talked to them? I don't care about TAM slides — I care about whether real humans want this thing.`,
-      `What's your unfair advantage? Why can YOUR team win this? I back ambitious misfits — tell me why you're the misfit who sees something nobody else does.`,
-      `Good. I can work with this. How much are you raising and what's the burn? I want to see you move FAST — YC companies grow 10-20% weekly. Can you?`,
-      `I've heard enough. Let me think about whether the timing is right — "the most powerful startups emerge when factors converge to make NOW the perfect time." Drop your deck and I'll review.`,
-    ];
-    if (shark.id === "marc-andreessen") return [
-      `Software is eating the world. AI is eating software. So tell me — what part of the world is YOUR software eating? And please, think BIGGER than you're probably thinking.`,
-      `OK, but is this a MASSIVE market? I don't fund incremental improvements. I fund companies that "invade existing industries with impunity." Convince me this is that.`,
-      `Who are the incumbents you're destroying? "No one should expect building a new high-growth company in an established industry to be easy. It's brutally difficult." Why can you do it?`,
-      `What's the technology moat? I co-built the web browser — I know what real technical depth looks like. Show me something that was IMPOSSIBLE two years ago.`,
-      `Interesting. This could be big. Send me the deck, your GitHub, and anything that shows technical depth. I want to believe. IT'S TIME TO BUILD.`,
-    ];
-    // Chamath
-    return [
-      `Alright, here's how this works. I'm going to ask you hard questions and I want honest answers. No VC-speak. What problem are you solving and WHY should I care?`,
-      `Numbers. I want numbers. What are your unit economics? Customer acquisition cost? LTV? "Your job as a smart investor is to separate facts from fiction and noise." Show me facts.`,
-      `"Valuable companies take decades to build." What's your 10-year vision? I don't care about your exit strategy — I care about whether this compounds.`,
-      `Here's the hard ugly truth most VCs won't tell you: most startups fail because they chase hype instead of solving real problems. Tell me why yours is different.`,
-      `OK. You've got my attention. But remember — "fast money returns completely decay long-term thinking." I invest in compounders. Send me everything and let me dig into the data.`,
-    ];
-  };
-
-  const startPitch = () => {
+  const startPitch = async () => {
     setStarted(true);
-    const intros: Record<string, string> = {
-      "garry-tan": `Welcome to YC's virtual pitch room. I'm Garry.\n\n"Don't tell me there are too few good ideas. Go outside — there's a billion problems to solve."\n\nSo what's YOUR billion-dollar problem? Tell me what you're building. Drop files anytime.`,
-      "marc-andreessen": `You've entered the a16z pitch chamber. I'm Marc.\n\n"It's time to build."\n\nI want to hear about technology that changes everything. What are you building, and why does the world need it NOW? Attach your deck whenever.`,
-      "chamath-palihapitiya": `Social Capital pitch session. I'm Chamath.\n\nFair warning: I'm going to be blunt. "People are unhappy because they're chasing the wrong things." I hope you're not.\n\nWhat are you building and what real human problem does it solve? Files welcome anytime.`,
-    };
-    setMessages([
-      { role: "system", content: intros[shark.id] || `Pitch session with ${shark.name}. What are you building?` },
-    ]);
+    setLoading(true);
+
+    // Get the investor's opening line from Grok
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sharkId: shark.id,
+          messages: [
+            { role: "user", content: "A founder has just entered your pitch room. Introduce yourself in character and ask them what they're building. Keep it to 2-3 sentences. Reference one of your famous quotes." },
+          ],
+        }),
+      });
+      const data = await res.json();
+      setMessages([{ role: "assistant", content: data.reply || "What are you building? Tell me." }]);
+    } catch {
+      setMessages([{ role: "assistant", content: `Pitch session with ${shark.name}. What are you building?` }]);
+    }
+    setLoading(false);
   };
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
     const userMsg: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput("");
+    setLoading(true);
 
-    setTimeout(() => {
-      const responses = getResponses();
-      const userMsgCount = messages.filter((m) => m.role === "user").length;
-      const idx = Math.min(userMsgCount, responses.length - 1);
-      setMessages((prev) => [...prev, { role: "system", content: responses[idx] }]);
-    }, 800);
+    try {
+      // Build conversation history for Grok (convert "assistant" display role to API format)
+      const apiMessages = newMessages.map((m) => ({
+        role: m.role === "user" ? "user" as const : "assistant" as const,
+        content: m.content,
+      }));
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sharkId: shark.id,
+          messages: apiMessages,
+        }),
+      });
+      const data = await res.json();
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "..." }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: "assistant", content: "Connection error. Try again." }]);
+    }
+    setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -98,16 +102,29 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
 
   const handleFileDrop = () => {
     const fileName = "pitch_deck_v3.pdf";
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] },
-    ]);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "system", content: `Received ${fileName}. I'll include this in your pitch package. Anything else to add?` },
-      ]);
-    }, 600);
+    const userMsg: Message = { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] };
+    setMessages((prev) => [...prev, userMsg]);
+    // Tell the AI about the file
+    setLoading(true);
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sharkId: shark.id,
+        messages: [...messages, userMsg].map((m) => ({
+          role: m.role === "user" ? "user" as const : "assistant" as const,
+          content: m.content,
+        })),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "Got it." }]);
+      })
+      .catch(() => {
+        setMessages((prev) => [...prev, { role: "assistant", content: "File received. Continue your pitch." }]);
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -124,18 +141,11 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
           </div>
           <div style={{ padding: 8 }}>
             <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-              <div style={{
-                width: 48, height: 48,
-                background: "#808080",
-                border: "inset 2px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 24,
-                flexShrink: 0,
-              }}>
-                {shark.avatar}
-              </div>
+              <img
+                src={shark.avatar}
+                alt={shark.name}
+                style={{ width: 48, height: 48, borderRadius: 4, border: "2px inset", objectFit: "cover", flexShrink: 0 }}
+              />
               <div>
                 <div style={{ fontWeight: "bold", fontSize: 13 }}>{shark.name}</div>
                 <div style={{ fontSize: 10, color: "#666" }}>{shark.title}</div>
@@ -264,20 +274,21 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 {messages.map((msg, i) => (
                   <div key={i} style={{ marginBottom: 8 }}>
                     <span style={{
-                      color: msg.role === "system" ? "cyan" : "yellow",
+                      color: msg.role === "user" ? "yellow" : "cyan",
                       fontWeight: "bold",
                     }}>
-                      {msg.role === "system" ? "SYSTEM" : "YOU"}:
+                      {msg.role === "user" ? "YOU" : shark.name.split(" ")[0].toUpperCase()}:
                     </span>
                     <br />
                     <span style={{
-                      color: msg.role === "system" ? "lime" : "white",
+                      color: msg.role === "user" ? "white" : "lime",
                       whiteSpace: "pre-wrap",
                     }}>
                       {msg.content}
                     </span>
                   </div>
                 ))}
+                {loading && <span style={{ color: "cyan" }}>typing</span>}
                 <span className="blink" style={{ color: "lime" }}>█</span>
               </div>
 
@@ -313,7 +324,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
           {/* Status */}
           <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 10 }}>
             <div className="status-bar-segment" style={{ fontSize: 11, flex: 1 }}>
-              {started ? `${messages.filter(m => m.role === "user").length} message(s) sent` : "Ready"}
+              {loading ? `${shark.name} is thinking...` : started ? `${messages.filter(m => m.role === "user").length} message(s) sent` : "Ready"}
             </div>
             <div className="status-bar-segment" style={{ fontSize: 11 }}>
               Prize: ${shark.stakedAmount.toLocaleString()}

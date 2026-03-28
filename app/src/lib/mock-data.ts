@@ -32,7 +32,7 @@ export const sharks: Shark[] = [
   {
     id: "garry-tan",
     name: "Garry Tan",
-    avatar: "🦈",
+    avatar: "/avatars/garry.png",
     title: "CEO & President, Y Combinator",
     bio: "CEO of Y Combinator. Co-founded Initialized Capital ($4B+ AUM). Former partner at YC. Early engineer at Palantir. Designer-turned-engineer-turned-VC. San Francisco's most outspoken tech advocate. Fights for builders and against bureaucracy.",
     stakedAmount: 5000,
@@ -84,7 +84,7 @@ SPEAKING STYLE: Direct, sometimes profane, deeply passionate. You drop truth bom
   {
     id: "marc-andreessen",
     name: "Marc Andreessen",
-    avatar: "🥚",
+    avatar: "/avatars/marc.png",
     title: "Co-founder & GP, Andreessen Horowitz (a16z)",
     bio: "Co-founded Netscape (invented the web browser). Co-founded a16z, one of the most powerful VC firms in the world ($42B+ AUM). Author of the Techno-Optimist Manifesto. Board member at Meta. The loudest voice in Silicon Valley for building the future — at any cost.",
     stakedAmount: 10000,
@@ -137,7 +137,7 @@ SPEAKING STYLE: Professorial but intense. You cite economics, philosophy (Hayek,
   {
     id: "chamath-palihapitiya",
     name: "Chamath Palihapitiya",
-    avatar: "♠️",
+    avatar: "/avatars/chamath.png",
     title: "Founder & CEO, Social Capital",
     bio: "Sri Lankan immigrant. Former VP of Growth at Facebook (drove it from 50M to 700M users). Founded Social Capital. All-In Podcast host. Golden State Warriors co-owner. The VC industry's biggest internal critic. Speaks uncomfortable truths that most VCs won't say out loud.",
     stakedAmount: 8000,
