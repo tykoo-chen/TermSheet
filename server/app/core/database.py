@@ -6,10 +6,16 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# statement_cache_size=0 required for Supabase PgBouncer (transaction pooling)
+connect_args = {}
+if "pooler.supabase" in settings.db_url:
+    connect_args["statement_cache_size"] = 0
+
 engine = create_async_engine(
     settings.db_url,
     echo=settings.debug,
     pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

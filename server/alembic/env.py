@@ -45,7 +45,13 @@ def do_run_migrations(connection):
 
 async def run_async_migrations() -> None:
     # Build engine directly from the raw URL to avoid configparser interpolation issues
-    connectable = create_async_engine(settings.db_url, poolclass=pool.NullPool)
+    # statement_cache_size=0 required for Supabase PgBouncer (transaction pooling)
+    connect_args = {}
+    if "pooler.supabase" in settings.db_url:
+        connect_args["statement_cache_size"] = 0
+    connectable = create_async_engine(
+        settings.db_url, poolclass=pool.NullPool, connect_args=connect_args
+    )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
