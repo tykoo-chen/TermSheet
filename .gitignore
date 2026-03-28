@@ -4,3 +4,9 @@ node_modules/
 .env.local
 .DS_Store
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+venv/
+*.db
