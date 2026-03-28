@@ -1,10 +1,13 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
   const [time, setTime] = useState("");
 
   useEffect(() => {
@@ -20,6 +23,11 @@ export default function Navbar() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
 
   const navItems = [
     { href: "/", label: "Shark Tank", taskLabel: "Shark Tank" },
@@ -64,8 +72,28 @@ export default function Navbar() {
           background: "var(--win-bg)",
         }}
       >
+        {user ? (
+          <>
+            <span style={{ fontSize: 10, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {user.email}
+            </span>
+            <button
+              onClick={handleSignOut}
+              className="win95-btn"
+              style={{ fontSize: 9, padding: "1px 6px" }}
+            >
+              Sign Out
+            </button>
+          </>
+        ) : (
+          <Link href="/login">
+            <span style={{ fontSize: 10, color: "blue", textDecoration: "underline", cursor: "pointer" }}>
+              Log In
+            </span>
+          </Link>
+        )}
         <span style={{ fontFamily: "var(--font-pixel)", color: "lime", background: "black", padding: "0 4px", fontSize: 14 }}>
-          ON
+          {user ? "ON" : "OFF"}
         </span>
         <span style={{ fontSize: 11 }}>{time}</span>
       </div>

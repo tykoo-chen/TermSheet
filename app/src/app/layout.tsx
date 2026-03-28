@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import BootScreen from "@/components/BootScreen";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
   title: "TermSheet — ARE YOU READY TO PITCH?",
@@ -16,14 +17,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <BootScreen>
-          <div className="crt-overlay" />
-          <div className="crt-flicker" />
-          <div style={{ paddingBottom: 30, minHeight: "100vh" }}>
-            {children}
-          </div>
-          <Navbar />
-        </BootScreen>
+        <AuthProvider>
+          <BootScreen>
+            <div className="crt-overlay" />
+            <div className="crt-flicker" />
+            <div style={{ paddingBottom: 30, minHeight: "100vh" }}>
+              {children}
+            </div>
+            <Navbar />
+          </BootScreen>
+        </AuthProvider>
       </body>
     </html>
   );

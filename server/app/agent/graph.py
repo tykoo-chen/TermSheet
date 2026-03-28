@@ -3,7 +3,6 @@
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
@@ -19,12 +18,30 @@ class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
 
 
-def create_graph():
+def _build_llm():
+    """Build the LLM based on the configured provider."""
     settings = get_settings()
-    llm = ChatOpenAI(
+    provider = settings.llm_provider.lower()
+
+    if provider == "xai":
+        from langchain_xai import ChatXAI
+
+        return ChatXAI(
+            model="grok-3-latest",
+            xai_api_key=settings.xai_api_key,
+        )
+
+    # default: openai
+    from langchain_openai import ChatOpenAI
+
+    return ChatOpenAI(
         model="gpt-4o-mini",
         api_key=settings.openai_api_key,
     )
+
+
+def create_graph():
+    llm = _build_llm()
 
     def chatbot(state: AgentState) -> AgentState:
         messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
+import AuthGuard from "@/components/AuthGuard";
 
 const sectors = ["All", "DeFi", "AI + Web3", "Infrastructure", "Consumer", "Gaming", "Social", "RWA", "Payments", "Dev Tools", "ZK"];
 
@@ -16,6 +17,7 @@ export default function Home() {
   });
 
   return (
+    <AuthGuard>
     <div style={{ display: "flex", height: "calc(100vh - 30px)" }}>
       <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
         <div className="win95-window" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -140,5 +142,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

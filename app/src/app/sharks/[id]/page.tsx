@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
+import AuthGuard from "@/components/AuthGuard";
 
 interface Message {
   role: "system" | "user";
@@ -111,6 +112,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   };
 
   return (
+    <AuthGuard>
     <div style={{ height: "calc(100vh - 30px)", padding: 8, display: "flex", gap: 8 }}>
       {/* Left: Investor Info */}
       <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
@@ -322,5 +324,6 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

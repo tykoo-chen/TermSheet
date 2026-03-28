@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 type Tab = "investor" | "founder";
 
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   };
 
   return (
+    <AuthGuard>
     <div style={{ display: "flex", height: "calc(100vh - 30px)" }}>
       {/* Main */}
       <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
@@ -238,5 +240,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }
