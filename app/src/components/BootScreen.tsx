@@ -1,19 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function BootScreen({ children }: { children: React.ReactNode }) {
-  const [booted, setBooted] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("termsheet-booted") === "1";
-    }
-    return false;
-  });
+  const [booted, setBooted] = useState(false);
   const [dead, setDead] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("termsheet-booted") === "1") {
+      setBooted(true);
+    }
+    setMounted(true);
+  }, []);
 
   const handleBoot = () => {
     sessionStorage.setItem("termsheet-booted", "1");
     setBooted(true);
   };
+
+  // Prevent hydration mismatch — render nothing until client is mounted
+  if (!mounted) {
+    return <div style={{ background: "var(--os-bg)", height: "100vh" }} />;
+  }
 
   if (dead) {
     return (
