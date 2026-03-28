@@ -2,6 +2,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { ConnectButton } from "thirdweb/react";
+import { inAppWallet, createWallet } from "thirdweb/wallets";
+import { client } from "@/lib/thirdweb";
+import { base } from "thirdweb/chains";
+
+const wallets = [
+  inAppWallet({
+    auth: {
+      options: ["email", "x"],
+    },
+  }),
+  createWallet("io.metamask"),
+  createWallet("com.coinbase.wallet"),
+  createWallet("walletConnect"),
+];
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -56,13 +71,39 @@ export default function Navbar() {
           borderLeft: "2px solid var(--win-border-dark)",
           borderRight: "2px solid var(--win-border-light)",
           borderBottom: "2px solid var(--win-border-light)",
-          padding: "0 10px",
+          padding: "0 6px",
           display: "flex",
           alignItems: "center",
           gap: 8,
           background: "var(--win-bg)",
         }}
       >
+        {client && (
+          <ConnectButton
+            client={client}
+            wallets={wallets}
+            chain={base}
+            connectButton={{
+              label: "Sign In",
+              style: {
+                fontSize: 11,
+                padding: "2px 10px",
+                height: 22,
+                minWidth: 0,
+                fontFamily: "inherit",
+              },
+            }}
+            detailsButton={{
+              style: {
+                fontSize: 11,
+                padding: "2px 10px",
+                height: 22,
+                minWidth: 0,
+                fontFamily: "inherit",
+              },
+            }}
+          />
+        )}
         <span style={{ fontFamily: "var(--font-pixel)", color: "lime", background: "black", padding: "0 4px", fontSize: 14 }}>
           ON
         </span>
