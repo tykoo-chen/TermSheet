@@ -1,12 +1,18 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { sharks } from "@/lib/mock-data";
-import { useActiveAccount, ConnectButton } from "thirdweb/react";
+import { useActiveAccount, ConnectButton, TransactionButton } from "thirdweb/react";
 import { inAppWallet, createWallet } from "thirdweb/wallets";
+import { prepareContractCall, getContract } from "thirdweb";
 import { client } from "@/lib/thirdweb";
 import { base } from "thirdweb/chains";
+
+// USDC on Base — 6 decimals, $1 = 1_000_000
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+// Platform treasury — receives pitch fees. Set NEXT_PUBLIC_PLATFORM_WALLET in env.
+const PLATFORM_WALLET =
+  process.env.NEXT_PUBLIC_PLATFORM_WALLET || "0x0000000000000000000000000000000000000001";
 
 const wallets = [
   inAppWallet({ auth: { options: ["email", "x"] } }),
@@ -55,7 +61,6 @@ function ScoreBar({ score }: { score: number }) {
 export default function SharkProfile({ params }: { params: { id: string } }) {
   const shark = sharks.find((s) => s.id === params.id);
   const account = useActiveAccount();
-  const searchParams = useSearchParams();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -64,9 +69,9 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const chatRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Payment state
-  const [paymentLoading, setPaymentLoading] = useState(false);
+  // USDC payment state
   const [pitchPaid, setPitchPaid] = useState(false);
+  const [payTxHash, setPayTxHash] = useState<string | null>(null);
 
   // Session identity
   const sessionIdRef = useRef<string>("");
@@ -98,22 +103,6 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [messages, showSettle]);
-
-  // Detect return from Stripe checkout
-  useEffect(() => {
-    const paid = searchParams.get("pitch_paid");
-    const returnedSessionId = searchParams.get("pitch_session");
-    if (paid === "1" && returnedSessionId) {
-      sessionIdRef.current = returnedSessionId;
-      setPitchPaid(true);
-      // Clean URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete("pitch_paid");
-      url.searchParams.delete("session_id");
-      url.searchParams.delete("pitch_session");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, [searchParams]);
 
   // Check weekly limit on mount (disabled for dev/testing)
   // useEffect(() => {
@@ -169,38 +158,20 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     );
   }
 
-  const handlePayAndPitch = async () => {
-    if (!shark) return;
-    // If Stripe not configured, skip payment gate (dev mode)
-    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-      setPitchPaid(true);
-      return;
-    }
-    const newSessionId = crypto.randomUUID();
-    sessionIdRef.current = newSessionId;
-    setPaymentLoading(true);
-    try {
-      const res = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sharkId: shark.id, sharkName: shark.name, sessionId: newSessionId }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        // Stripe not configured server-side → skip gate
-        setPitchPaid(true);
-      }
-    } catch {
-      setPitchPaid(true); // fallback: skip gate on error
-    }
-    setPaymentLoading(false);
+  // Build the USDC transfer transaction — called lazily by TransactionButton
+  const buildPitchFeeTransaction = () => {
+    if (!client) throw new Error("Client not configured");
+    const usdcContract = getContract({ client, chain: base, address: USDC_BASE });
+    if (!sessionIdRef.current) sessionIdRef.current = crypto.randomUUID();
+    return prepareContractCall({
+      contract: usdcContract,
+      method: "function transfer(address to, uint256 amount) returns (bool)",
+      params: [PLATFORM_WALLET as `0x${string}`, BigInt(1_000_000)], // $1 USDC
+    });
   };
 
   const startPitch = async () => {
     if (blocked) return;
-    // sessionId may already be set if returning from Stripe checkout
     if (!sessionIdRef.current) sessionIdRef.current = crypto.randomUUID();
     localStorage.setItem(getWeekKey(shark.id), "1");
     setStarted(true);
@@ -503,22 +474,22 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 16, textAlign: "left", lineHeight: 1.8 }}>
                   <div>⏱ <strong>Session limit:</strong> 10 minutes</div>
                   <div>📝 <strong>Per message:</strong> ~500 tokens (~375 words)</div>
-                  <div>💳 <strong>Pitch fee:</strong> $1.00 USD (via Stripe)</div>
-                  <div>💰 <strong>If accepted:</strong> ${shark.stakedAmount.toLocaleString()} USDC on Base</div>
+                  <div>🔷 <strong>Pitch fee:</strong> 1 USDC on Base (on-chain)</div>
+                  <div>💰 <strong>If accepted:</strong> ${shark.stakedAmount.toLocaleString()} USDC to your wallet</div>
                 </div>
 
-                {/* Step 1: must be signed in */}
+                {/* Step 1: connect wallet */}
                 {client && !account ? (
                   <div>
                     <div style={{ fontSize: 11, color: "#c00", marginBottom: 10, fontWeight: "bold" }}>
-                      ① Sign in first — your wallet receives USDC if accepted
+                      ① Connect wallet — needed to pay fee &amp; receive USDC if accepted
                     </div>
                     <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
                       <ConnectButton
                         client={client!}
                         wallets={wallets}
                         chain={base}
-                        connectButton={{ label: "Sign In to Continue →" }}
+                        connectButton={{ label: "Connect Wallet →" }}
                       />
                     </div>
                     <div style={{ display: "flex", justifyContent: "center" }}>
@@ -528,8 +499,13 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 ) : pitchPaid ? (
                   /* Step 3: paid → start pitch */
                   <div>
-                    <div style={{ fontSize: 11, color: "green", marginBottom: 10, fontWeight: "bold" }}>
-                      ✓ Payment received — ready to pitch!
+                    <div style={{ fontSize: 11, color: "green", marginBottom: 6, fontWeight: "bold" }}>
+                      ✓ 1 USDC paid on-chain
+                      {payTxHash && (
+                        <span style={{ fontSize: 9, color: "#888", fontFamily: "var(--font-pixel)", marginLeft: 6 }}>
+                          tx: {payTxHash.slice(0, 10)}...
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                       <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
@@ -539,26 +515,48 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                     </div>
                   </div>
                 ) : (
-                  /* Step 2: signed in → pay $1 */
+                  /* Step 2: pay 1 USDC on-chain */
                   <div>
                     {account && (
                       <div style={{ fontSize: 10, color: "#666", marginBottom: 8, fontFamily: "var(--font-pixel)" }}>
-                        ✓ Signed in as {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                        ✓ Wallet: {account.address.slice(0, 6)}...{account.address.slice(-4)}
                       </div>
                     )}
-                    <div style={{ fontSize: 11, color: "#444", marginBottom: 10, lineHeight: 1.5 }}>
-                      Pay <strong>$1.00</strong> to start your pitch session.<br />
-                      <span style={{ color: "#888", fontSize: 10 }}>Refunded automatically if {shark.name} accepts.</span>
+                    <div style={{ fontSize: 11, color: "#444", marginBottom: 12, lineHeight: 1.5 }}>
+                      Pay <strong>1 USDC</strong> on Base to start your session.<br />
+                      <span style={{ fontSize: 10, color: "#888" }}>Make sure you have USDC on Base network.</span>
                     </div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                      <button
-                        className="win95-btn"
-                        style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px", opacity: paymentLoading ? 0.6 : 1 }}
-                        onClick={handlePayAndPitch}
-                        disabled={paymentLoading}
-                      >
-                        {paymentLoading ? "Loading..." : "Pay $1 & Pitch →"}
-                      </button>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      {client ? (
+                        <TransactionButton
+                          transaction={buildPitchFeeTransaction}
+                          onTransactionConfirmed={(receipt) => {
+                            setPayTxHash(receipt.transactionHash);
+                            setPitchPaid(true);
+                          }}
+                          onError={(err) => {
+                            // If no platform wallet set, skip gate in dev
+                            if (PLATFORM_WALLET === "0x0000000000000000000000000000000000000001") {
+                              setPitchPaid(true);
+                            } else {
+                              console.error("Payment failed:", err);
+                            }
+                          }}
+                          style={{
+                            fontFamily: "var(--font-mono, monospace)",
+                            fontSize: 13,
+                            fontWeight: "bold",
+                            padding: "6px 20px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Pay 1 USDC &amp; Pitch →
+                        </TransactionButton>
+                      ) : (
+                        <button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }} onClick={() => setPitchPaid(true)}>
+                          Start Pitch →
+                        </button>
+                      )}
                       <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }}>Back</button></Link>
                     </div>
                   </div>
