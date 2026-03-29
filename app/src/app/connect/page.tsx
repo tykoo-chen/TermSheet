@@ -43,36 +43,50 @@ function buildUsdcDeposit(amountUsdc: number) {
 }
 
 function buildClaudePrompt(wallet: string, sessionId: string, pitchToken?: string) {
-  const tokenLine = pitchToken
-    ? `PITCH_TOKEN="${pitchToken}"  # Include as: x-pitch-token header on every /api/chat request\n`
-    : `# No pitch token — buy credits below to get one\n`;
+  const tokenValue = pitchToken ?? "<get-token-from-termsheet-connect-page>";
 
-  return `# TermSheet — Agent Integration Config
-${tokenLine}
-WALLET_ADDRESS="${wallet}"
-SESSION_ID="${sessionId}"
-API_ENDPOINT="${API_BASE}/api/chat"
+  return `# TermSheet Pitch Task
 
----
+## API Config
+Endpoint:  POST ${API_BASE}/api/chat
+Header:    x-pitch-token: ${tokenValue}
+Session:   ${sessionId}
+Wallet:    ${wallet}
 
-You are a startup pitch agent connected to TermSheet.
-Pitch the founder's startup to all VCs via the API above on their behalf.
+## Request body format
+\`\`\`json
+{
+  "sharkId": "<vc-id>",
+  "sessionId": "${sessionId}",
+  "roundNumber": 1,
+  "messages": [{ "role": "user", "content": "<pitch text>" }]
+}
+\`\`\`
+For round 2+, append the VC's reply to messages before sending the next round.
 
-HOW TO PITCH:
-POST ${API_BASE}/api/chat
-Headers: { "x-pitch-token": PITCH_TOKEN }
-Body: { "sharkId": "<vc-id>", "sessionId": "${sessionId}", "roundNumber": <n>, "messages": [...] }
+## Task
+Please pitch my startup to all 13 VCs simultaneously by making POST requests to the endpoint above.
+Keep pitching each VC until their response includes "decision": "ACCEPT" or "decision": "REJECT" (takes 3–5 rounds).
+Each message should be under 400 words and tailored to that VC's focus.
 
-PAYOUT IS AUTOMATIC — when a VC returns "decision":"ACCEPT", USDC goes to ${wallet} automatically.
-DO NOT call any payment or settle endpoints. Just pitch and let the platform handle payouts.
+## VCs to pitch
+garry-tan · marc-andreessen · chamath-palihapitiya · peter-thiel
+david-sacks · sam-altman · naval-ravikant · balaji-srinivasan
+ben-horowitz · roelof-botha · zhu-xiaohu · neil-shen · anna-fang
 
-VCs available (13 total — pitch all simultaneously):
-garry-tan (68) · marc-andreessen (78) · chamath-palihapitiya (73) · peter-thiel (80)
-david-sacks (68) · sam-altman (82) · naval-ravikant (70) · balaji-srinivasan (76)
-ben-horowitz (72) · roelof-botha (76) · zhu-xiaohu (68) · neil-shen (82) · anna-fang (72)
+## My startup
+<!-- Fill this in before running -->
+Name:
+One-liner:
+Problem:
+Solution:
+Traction:
+Ask:
 
-STRATEGY: Pitch all 13 simultaneously. Each VC needs 3+ rounds to evaluate.
-Each message: max 400 words. Never fabricate startup data — ask the founder first.`;
+## Notes
+- Check remaining credits: GET ${API_BASE}/api/credits?token=${tokenValue}
+- When a VC accepts, USDC payout goes to ${wallet} automatically
+- Never fabricate startup details — ask the founder if anything is unclear`;
 }
 
 export default function ConnectPage() {
@@ -98,6 +112,22 @@ export default function ConnectPage() {
   const [depositPending, setDepositPending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+  const [downloadedMd, setDownloadedMd] = useState(false);
+
+  const downloadClaudeMd = () => {
+    const content = buildClaudePrompt(account?.address ?? "0xYOUR_WALLET", sessionId, pitchToken ?? undefined);
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "CLAUDE.md";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloadedMd(true);
+    setTimeout(() => setDownloadedMd(false), 3000);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -364,18 +394,41 @@ export default function ConnectPage() {
             )}
           </div>
 
-          {/* Step 3 — Copy config */}
+          {/* Step 3 — Copy config / Download CLAUDE.md */}
           {account && (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontWeight: "bold", fontSize: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ display: "inline-block", width: 20, height: 20, borderRadius: "50%", background: "#000080", color: "white",
                   textAlign: "center", lineHeight: "20px", fontSize: 11, flexShrink: 0 }}>3</span>
-                Copy agent config
+                Set up your agent
                 <span style={{ fontSize: 10, fontWeight: "normal", color: "#888" }}>(Claude Code, OpenAI, LangChain, or any agent)</span>
               </div>
+
+              {/* CLAUDE.md callout */}
+              <div className="inset-box" style={{ padding: 10, marginBottom: 10, background: "#001a00", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ color: "#00ff88", fontFamily: "var(--font-pixel)", fontSize: 11, fontWeight: "bold", marginBottom: 3 }}>
+                    Recommended: CLAUDE.md
+                  </div>
+                  <div style={{ color: "#aaa", fontSize: 10, lineHeight: 1.6 }}>
+                    Drop <code style={{ background: "#333", padding: "0 3px" }}>CLAUDE.md</code> in your project root.
+                    Claude Code reads it as trusted project config — no injection warnings, no approval prompts.
+                    Fill in the &quot;My startup&quot; section, then run: <code style={{ background: "#333", padding: "0 3px" }}>claude &quot;pitch my startup per CLAUDE.md&quot;</code>
+                  </div>
+                </div>
+                <button className="win95-btn"
+                  style={{ fontSize: 11, padding: "5px 14px", fontWeight: "bold", whiteSpace: "nowrap",
+                    background: downloadedMd ? "#005500" : "#ffff00", color: downloadedMd ? "#00ff88" : "#000" }}
+                  onClick={downloadClaudeMd}>
+                  {downloadedMd ? "✓ Downloaded!" : "⬇ Download CLAUDE.md"}
+                </button>
+              </div>
+
+              {/* Raw prompt fallback */}
+              <div style={{ fontSize: 10, color: "#666", marginBottom: 4 }}>Or copy raw prompt (for non-Claude-Code agents):</div>
               <div style={{ position: "relative" }}>
                 <textarea readOnly value={prompt}
-                  style={{ width: "100%", height: 180, fontFamily: "var(--font-pixel)", fontSize: 10,
+                  style={{ width: "100%", height: 200, fontFamily: "var(--font-pixel)", fontSize: 10,
                     padding: 8, background: "#000", color: "#00ff88", border: "2px inset #888", resize: "none", lineHeight: 1.5 }} />
                 <button className="win95-btn"
                   style={{ position: "absolute", top: 6, right: 6, fontSize: 11, padding: "2px 10px", fontWeight: "bold",
