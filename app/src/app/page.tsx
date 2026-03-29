@@ -35,13 +35,6 @@ export default function Home() {
               Enter →
             </button>
           </Link>
-          <div style={{ width: 1, background: "#4444aa", alignSelf: "stretch", margin: "0 4px" }} />
-          <span style={{ color: "#aaf", fontFamily: "var(--font-pixel)", fontSize: 11 }}>🔌 Let Claude pitch for you</span>
-          <Link href="/connect" style={{ marginLeft: "auto" }}>
-            <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 11, padding: "1px 10px", background: "#00ff88" }}>
-              Get Claude Code →
-            </button>
-          </Link>
         </div>
 
         {/* Toolbar */}
