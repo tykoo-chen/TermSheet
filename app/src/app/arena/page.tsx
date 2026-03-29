@@ -350,14 +350,14 @@ for (const sharkId of VCS) {
             style={{ fontSize: 11, padding: "1px 12px", fontWeight: mode === "builtin" ? "bold" : "normal", background: mode === "builtin" ? "#000080" : undefined, color: mode === "builtin" ? "white" : undefined }}
             onClick={() => setMode("builtin")}
           >
-            内置 Agent
+            Auto Pitch
           </button>
           <button
             className="win95-btn"
             style={{ fontSize: 11, padding: "1px 12px", fontWeight: mode === "external" ? "bold" : "normal", background: mode === "external" ? "#000080" : undefined, color: mode === "external" ? "white" : undefined }}
             onClick={() => setMode("external")}
           >
-            接入自己的 Agent →
+            Bring Your Agent →
           </button>
           <Link href="/" style={{ marginLeft: "auto" }}>
             <button className="win95-btn" style={{ fontSize: 10, padding: "1px 8px" }}>← Back</button>
@@ -471,9 +471,16 @@ for (const sharkId of VCS) {
                 </button>
               </div>
 
-              <div style={{ fontSize: 10, color: "#666", lineHeight: 1.6 }}>
-                Your agent sends messages → VC responds in real-time → results appear below.
-                Call the endpoint once per round per VC. Keep calling until <code style={{ background: "#eee", padding: "0 2px" }}>decision</code> is <code style={{ background: "#eee", padding: "0 2px" }}>ACCEPT</code> or <code style={{ background: "#eee", padding: "0 2px" }}>REJECT</code>.
+              <div style={{ fontSize: 10, color: "#666", lineHeight: 1.6, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <span>
+                  Your agent sends messages → VC responds in real-time → results appear below.
+                  Keep calling until <code style={{ background: "#eee", padding: "0 2px" }}>decision</code> is <code style={{ background: "#eee", padding: "0 2px" }}>ACCEPT</code> or <code style={{ background: "#eee", padding: "0 2px" }}>REJECT</code>.
+                </span>
+                <Link href="/connect">
+                  <button className="win95-btn" style={{ fontSize: 10, padding: "2px 10px", fontWeight: "bold", background: "#ffff00", whiteSpace: "nowrap" }}>
+                    Get API Token →
+                  </button>
+                </Link>
               </div>
             </div>
           </div>
