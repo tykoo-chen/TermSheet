@@ -261,8 +261,6 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     setMessages(newMessages);
     setLoading(true);
     setRoundsUsed((r) => r + 1);
-    // Reuse sendMessage-style streaming by setting input and calling
-    const fakeInput = input;
     setInput("");
     try {
       const apiMessages = newMessages.map((m) => ({
@@ -340,7 +338,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <p style={{ fontFamily: "var(--font-pixel)", fontSize: 16, marginBottom: 8 }}>
                   WEEKLY LIMIT REACHED
                 </p>
-                <p style={{ fontSize: 12, color: "#444", lineHeight: 1.6 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
                   You've already pitched <strong>{shark.name}</strong> this week.<br />
                   Each investor allows <strong>1 pitch per week</strong>.<br /><br />
                   Come back next week to try again.
@@ -378,7 +376,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
               />
               <div>
                 <div style={{ fontWeight: "bold", fontSize: 13 }}>{shark.name}</div>
-                <div style={{ fontSize: 10, color: "#666" }}>{shark.title}</div>
+                <div style={{ fontSize: 10, color: "var(--text-secondary)" }}>{shark.title}</div>
                 <div className="blink" style={{ fontSize: 10, color: "green", fontWeight: "bold", marginTop: 2 }}>
                   AWAITING PITCH
                 </div>
@@ -407,11 +405,11 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 display: "flex",
                 justifyContent: "space-between",
                 padding: "3px 0",
-                borderBottom: "1px solid #ddd",
+                borderBottom: "1px solid var(--win-border-mid)",
                 fontSize: 11,
                 alignItems: "center",
               }}>
-                <span style={{ color: "#666" }}>{item.label}</span>
+                <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
                 <span style={{
                   fontWeight: "bold",
                   color: item.color || "var(--text-dark)",
@@ -426,11 +424,11 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
             <div className="inset-box" style={{ marginTop: 8, fontSize: 10, padding: 4 }}>
               <span style={{ color: "green", fontWeight: "bold" }}>✓ On-Chain Verified</span>
               {" · "}
-              <span style={{ color: "#888", fontFamily: "var(--font-pixel)", fontSize: 11 }}>0x1a2b...ef89</span>
+              <span style={{ color: "var(--text-disabled)", fontFamily: "var(--font-pixel)", fontSize: 11 }}>0x1a2b...ef89</span>
             </div>
 
             {/* Track record */}
-            <div style={{ marginTop: 8, fontSize: 10, color: "#666", marginBottom: 8 }}>
+            <div style={{ marginTop: 8, fontSize: 10, color: "var(--text-secondary)", marginBottom: 8 }}>
               {shark.dealsCompleted} deals · {shark.successRate}% success
             </div>
 
@@ -438,7 +436,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
             <div style={{ fontSize: 11, fontWeight: "bold", marginBottom: 4 }}>Famous quotes:</div>
             <div className="inset-box" style={{ fontSize: 10, maxHeight: 120, overflowY: "auto", padding: 4, lineHeight: 1.4 }}>
               {shark.quotes.slice(0, 4).map((q, i) => (
-                <div key={i} style={{ marginBottom: 4, fontStyle: "italic", color: "#444" }}>
+                <div key={i} style={{ marginBottom: 4, fontStyle: "italic", color: "var(--text-secondary)" }}>
                   &ldquo;{q}&rdquo;
                 </div>
               ))}
@@ -470,7 +468,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <p style={{ fontFamily: "var(--font-pixel)", fontSize: 20, marginBottom: 8 }}>
                   Ready to pitch {shark.name}?
                 </p>
-                <p style={{ fontSize: 12, color: "#666", marginBottom: 12, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.5 }}>
                   You&apos;ll have a conversation to describe your project.<br />
                   No forms — just talk naturally and attach files.<br />
                   If {shark.name} accepts, ${shark.stakedAmount.toLocaleString()} goes to your wallet.
@@ -483,7 +481,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                   <div>📅 <strong>Frequency:</strong> 1 pitch per investor per week</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
+                  <button className="win95-btn win95-btn-default" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
                     Start Pitch →
                   </button>
                   <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }}>Back</button></Link>
@@ -523,22 +521,37 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                     </span>
                   </div>
                 ))}
-                {loading && <span style={{ color: "cyan" }}>typing</span>}
+                {loading && <span className="blink" style={{ color: "cyan" }}>▌ {shark.name.split(" ")[0]} is typing...</span>}
                 {sessionEnded && (
-                  <div style={{ marginTop: 12, fontWeight: "bold", padding: 8 }}>
+                  <div style={{ marginTop: 12, fontWeight: "bold", padding: 4 }}>
                     {dealOutcome === "invest" ? (
-                      <div style={{ color: "lime", border: "1px solid lime", padding: 8 }}>
+                      <div style={{
+                        color: "lime",
+                        background: "#001a00",
+                        padding: 8,
+                        boxShadow: "inset -1px -1px #003300, inset 1px 1px lime, inset -2px -2px #001a00, inset 2px 2px #00aa00",
+                      }}>
                         ═══ DEAL CONFIRMED ═══<br />
                         {shark.name} is investing ${shark.stakedAmount.toLocaleString()}!<br />
                         Send your USDC wallet address below to receive the funds.
                       </div>
                     ) : dealOutcome === "pass" ? (
-                      <div style={{ color: "red" }}>
+                      <div style={{
+                        color: "#ff6666",
+                        background: "#1a0000",
+                        padding: 8,
+                        boxShadow: "inset -1px -1px #330000, inset 1px 1px #cc0000, inset -2px -2px #1a0000, inset 2px 2px #880000",
+                      }}>
                         ═══ DEAL PASSED ═══<br />
                         {shark.name} has passed on your pitch. Come back next week.
                       </div>
                     ) : (
-                      <div style={{ color: "red" }}>
+                      <div style={{
+                        color: "#ff6666",
+                        background: "#1a0000",
+                        padding: 8,
+                        boxShadow: "inset -1px -1px #330000, inset 1px 1px #cc0000, inset -2px -2px #1a0000, inset 2px 2px #880000",
+                      }}>
                         ── SESSION ENDED ── Come back next week to pitch again.
                       </div>
                     )}
@@ -571,7 +584,9 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                         height: 36,
                         fontFamily: "inherit",
                         fontSize: 12,
-                        border: inputOverLimit ? "2px solid red" : undefined,
+                        ...(inputOverLimit ? {
+                          boxShadow: "inset -1px -1px var(--btn-highlight), inset 1px 1px red, inset -2px -2px var(--win-border-mid), inset 2px 2px red",
+                        } : {}),
                       }}
                     />
                     <button
@@ -598,7 +613,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
           )}
 
           {/* Status bar */}
-          <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2, display: "flex", gap: 6 }}>
+          <div style={{ borderTop: "1px solid var(--win-border-dark)", borderBottom: "1px solid var(--win-border-mid)", padding: "2px 4px", margin: "0 1px 1px", display: "flex", gap: 6 }}>
             <div className="status-bar-segment" style={{ fontSize: 11, flex: 1 }}>
               {!started
                 ? "Ready"

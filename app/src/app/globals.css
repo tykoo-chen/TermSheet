@@ -5,25 +5,59 @@
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
 :root {
+  /* ── Core palette ─────────────────────────────────────────────────── */
   --boot-bg: #2a2bb7;
   --os-bg: #008080;
   --win-bg: #c0c0c0;
+
+  /* ── Window chrome (4-layer bevel system from Win98) ──────────────── */
   --win-border-light: #ffffff;
   --win-border-mid: #dfdfdf;
   --win-border-dark: #808080;
-  --win-border-black: #000000;
-  --title-bg-active: #000080;
-  --title-bg-inactive: #808080;
+  --win-border-black: #0a0a0a;
+
+  /* ── Title bar ────────────────────────────────────────────────────── */
+  --title-bg-active: linear-gradient(90deg, #000084, #1084d0);
+  --title-bg-inactive: linear-gradient(90deg, #808080, #c0c0c0);
+  --title-text-active: #ffffff;
+  --title-text-inactive: #d4d0c8;
+
+  /* ── Text hierarchy ───────────────────────────────────────────────── */
   --text-dark: #000000;
   --text-light: #ffffff;
+  --text-secondary: #333333;
+  --text-disabled: #808080;
+
+  /* ── Selection ────────────────────────────────────────────────────── */
+  --selection-bg: #000080;
+  --selection-text: #ffffff;
+
+  /* ── Input ────────────────────────────────────────────────────────── */
+  --input-bg: #ffffff;
+  --input-border: #808080;
+  --input-focus-border: #000080;
+
+  /* ── Button ───────────────────────────────────────────────────────── */
+  --btn-face: #c0c0c0;
+  --btn-active-face: #b0b0b0;
+  --btn-highlight: #ffffff;
+  --btn-shadow: #808080;
+
+  /* ── Effects ──────────────────────────────────────────────────────── */
   --glitch-cyan: #00ffff;
   --glitch-magenta: #ff00ff;
   --font-pixel: 'VT323', monospace;
 }
 
+/* ── Global resets ─────────────────────────────────────────────────── */
 * {
   -webkit-font-smoothing: none;
   image-rendering: pixelated;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
 }
 
 body {
@@ -35,7 +69,7 @@ body {
   min-height: 100vh;
 }
 
-/* CRT Overlay */
+/* ── CRT overlay ───────────────────────────────────────────────────── */
 .crt-overlay {
   position: fixed;
   top: 0; left: 0; width: 100vw; height: 100vh;
@@ -54,6 +88,7 @@ body {
   pointer-events: none; z-index: 9998;
 }
 
+/* ── Keyframes ─────────────────────────────────────────────────────── */
 @keyframes flicker {
   0% { opacity: 0.01; }
   50% { opacity: 0.04; }
@@ -73,122 +108,197 @@ body {
   animation: blinker 1s linear infinite;
 }
 
-/* Win95 Window */
+/* ═══════════════════════════════════════════════════════════════════════
+   Win98 Component System
+   Authentic 4-layer inset shadow bevel from ryos/98-custom.css
+   Outer: light + black, Inner: mid + dark
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Window ────────────────────────────────────────────────────────── */
 .win95-window {
   background: var(--win-bg);
-  border-top: 2px solid var(--win-border-light);
-  border-left: 2px solid var(--win-border-light);
-  border-right: 2px solid var(--win-border-black);
-  border-bottom: 2px solid var(--win-border-black);
-  box-shadow: inset 1px 1px 0 var(--win-border-mid), inset -1px -1px 0 var(--win-border-dark);
+  padding: 3px;
+  box-shadow:
+    inset -1px -1px var(--win-border-black),
+    inset  1px  1px var(--win-border-light),
+    inset -2px -2px var(--win-border-dark),
+    inset  2px  2px var(--win-border-mid);
+  border: none;
 }
 
+/* ── Title bar ─────────────────────────────────────────────────────── */
 .win95-title-bar {
   background: var(--title-bg-active);
-  color: var(--text-light);
-  padding: 2px 4px;
-  margin: 2px;
+  color: var(--title-text-active);
+  padding: 3px 2px 3px 3px;
+  margin: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
   font-size: 12px;
+  height: 22px;
+  user-select: none;
 }
 
+.win95-title-bar-inactive {
+  background: var(--title-bg-inactive);
+  color: var(--title-text-inactive);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
 .win95-btn {
-  background: var(--win-bg);
-  border-top: 2px solid var(--win-border-light);
-  border-left: 2px solid var(--win-border-light);
-  border-right: 2px solid var(--win-border-black);
-  border-bottom: 2px solid var(--win-border-black);
-  box-shadow: inset 1px 1px 0 var(--win-border-mid), inset -1px -1px 0 var(--win-border-dark);
+  background: var(--btn-face);
+  box-shadow:
+    inset -1px -1px var(--win-border-black),
+    inset  1px  1px var(--btn-highlight),
+    inset -2px -2px var(--btn-shadow),
+    inset  2px  2px var(--win-border-mid);
+  border: none;
   padding: 4px 12px;
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
   color: var(--text-dark);
+  min-height: 23px;
 }
 .win95-btn:active {
-  border-top: 2px solid var(--win-border-black);
-  border-left: 2px solid var(--win-border-black);
-  border-right: 2px solid var(--win-border-light);
-  border-bottom: 2px solid var(--win-border-light);
-  box-shadow: inset 1px 1px 0 var(--win-border-dark), inset -1px -1px 0 var(--win-border-mid);
+  box-shadow:
+    inset -1px -1px var(--btn-highlight),
+    inset  1px  1px var(--win-border-black),
+    inset -2px -2px var(--win-border-mid),
+    inset  2px  2px var(--btn-shadow);
+  padding: 5px 11px 3px 13px; /* shift content down-right on press */
 }
-.win95-btn:focus {
-  outline: 1px dotted black;
+.win95-btn:focus-visible {
+  outline: 1px dotted #000;
   outline-offset: -4px;
 }
+.win95-btn:disabled,
+.win95-btn[disabled] {
+  color: var(--text-disabled);
+  text-shadow: 1px 1px 0 var(--btn-highlight);
+  cursor: default;
+}
 
+/* Default button (primary action) — extra black rect around it */
+.win95-btn-default {
+  outline: 1px solid var(--win-border-black);
+  outline-offset: -1px;
+}
+
+/* ── System buttons (minimize, maximize, close) ────────────────────── */
 .sys-btn {
   width: 16px; height: 14px;
-  background: var(--win-bg);
-  border-top: 1px solid var(--win-border-light);
-  border-left: 1px solid var(--win-border-light);
-  border-right: 1px solid var(--win-border-black);
-  border-bottom: 1px solid var(--win-border-black);
+  background: var(--btn-face);
+  box-shadow:
+    inset -1px -1px var(--win-border-black),
+    inset  1px  1px var(--btn-highlight),
+    inset -2px -2px var(--btn-shadow),
+    inset  2px  2px var(--win-border-mid);
+  border: none;
   font-weight: bold;
   color: black;
   display: flex; justify-content: center; align-items: center;
   font-size: 10px;
   cursor: pointer;
+  padding: 0;
+}
+.sys-btn:active {
+  box-shadow:
+    inset -1px -1px var(--btn-highlight),
+    inset  1px  1px var(--win-border-black),
+    inset -2px -2px var(--win-border-mid),
+    inset  2px  2px var(--btn-shadow);
 }
 
+/* ── Inset box (read-only content areas) ───────────────────────────── */
 .inset-box {
-  background: white;
-  border-top: 2px solid var(--win-border-dark);
-  border-left: 2px solid var(--win-border-dark);
-  border-right: 2px solid var(--win-border-light);
-  border-bottom: 2px solid var(--win-border-light);
+  background: var(--input-bg);
+  box-shadow:
+    inset -1px -1px var(--btn-highlight),
+    inset  1px  1px var(--btn-shadow),
+    inset -2px -2px var(--win-border-mid),
+    inset  2px  2px var(--win-border-black);
+  border: none;
   padding: 4px;
 }
 
+/* ── Input fields ──────────────────────────────────────────────────── */
 .inset-input {
-  background: white;
-  border-top: 2px solid var(--win-border-dark);
-  border-left: 2px solid var(--win-border-dark);
-  border-right: 2px solid var(--win-border-light);
-  border-bottom: 2px solid var(--win-border-light);
-  padding: 2px 4px;
+  background: var(--input-bg);
+  box-shadow:
+    inset -1px -1px var(--btn-highlight),
+    inset  1px  1px var(--btn-shadow),
+    inset -2px -2px var(--win-border-mid),
+    inset  2px  2px var(--win-border-black);
+  border: none;
+  padding: 3px 4px;
   font-family: inherit;
   font-size: 12px;
   outline: none;
   color: var(--text-dark);
 }
-
-.status-bar-segment {
-  border-top: 1px solid var(--win-border-dark);
-  border-left: 1px solid var(--win-border-dark);
-  border-right: 1px solid var(--win-border-light);
-  border-bottom: 1px solid var(--win-border-light);
-  padding: 2px 6px;
+.inset-input:focus {
+  box-shadow:
+    inset -1px -1px var(--btn-highlight),
+    inset  1px  1px var(--input-focus-border),
+    inset -2px -2px var(--win-border-mid),
+    inset  2px  2px var(--input-focus-border);
+}
+.inset-input::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+.inset-input:disabled {
+  background: var(--win-bg);
+  color: var(--text-disabled);
 }
 
-/* Win95 Tabs */
+/* ── Status bar ────────────────────────────────────────────────────── */
+.status-bar-segment {
+  box-shadow:
+    inset -1px -1px var(--win-border-mid),
+    inset  1px  1px var(--btn-shadow);
+  border: none;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────── */
 .win95-tab {
   padding: 4px 8px;
-  border-top: 2px solid var(--win-border-light);
-  border-left: 2px solid var(--win-border-light);
-  border-right: 2px solid var(--win-border-black);
-  background: var(--win-bg);
-  margin-right: 2px;
+  background: var(--btn-face);
+  box-shadow:
+    inset  1px  1px var(--btn-highlight),
+    inset  2px  2px var(--win-border-mid),
+    inset -1px  0  var(--win-border-black),
+    inset -2px  0  var(--btn-shadow);
+  border: none;
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
+  margin-right: 2px;
   cursor: pointer;
   font-size: 12px;
   position: relative;
   top: 1px;
 }
 .win95-tab-active {
-  border-bottom: 2px solid var(--win-bg);
+  background: var(--win-bg);
   padding-bottom: 6px;
-  margin-top: -2px;
+  margin-top: -4px;
+  top: 2px;
   z-index: 3;
   font-weight: bold;
+  box-shadow:
+    inset  1px  1px var(--btn-highlight),
+    inset  2px  2px var(--win-border-mid),
+    inset -1px -1px var(--win-border-black),
+    inset -2px -2px var(--btn-shadow);
 }
 
-/* Terminal style text */
+/* ── Terminal style text ───────────────────────────────────────────── */
 .terminal-text {
   font-family: var(--font-pixel);
   background: black;
@@ -196,14 +306,15 @@ body {
   padding: 4px 8px;
 }
 
-/* Taskbar */
+/* ── Taskbar ───────────────────────────────────────────────────────── */
 .win95-taskbar {
   position: fixed;
   bottom: 0; left: 0; width: 100%; height: 30px;
   background: var(--win-bg);
-  border-top: 2px solid var(--win-border-light);
+  box-shadow: inset 0 1px 0 var(--btn-highlight);
+  border: none;
   display: flex;
-  padding: 2px;
+  padding: 2px 2px 2px 2px;
   gap: 4px;
   z-index: 8000;
 }
@@ -213,10 +324,13 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-top: 2px solid var(--win-border-light);
-  border-left: 2px solid var(--win-border-light);
-  border-right: 2px solid var(--win-border-black);
-  border-bottom: 2px solid var(--win-border-black);
+  background: var(--btn-face);
+  box-shadow:
+    inset -1px -1px var(--win-border-black),
+    inset  1px  1px var(--btn-highlight),
+    inset -2px -2px var(--btn-shadow),
+    inset  2px  2px var(--win-border-mid);
+  border: none;
   cursor: pointer;
   font-size: 11px;
   display: flex;
@@ -224,26 +338,103 @@ body {
   max-width: 160px;
 }
 .task-item-active {
-  border-top: 2px solid var(--win-border-black);
-  border-left: 2px solid var(--win-border-black);
-  border-right: 2px solid var(--win-border-light);
-  border-bottom: 2px solid var(--win-border-light);
+  box-shadow:
+    inset -1px -1px var(--btn-highlight),
+    inset  1px  1px var(--win-border-black),
+    inset -2px -2px var(--win-border-mid),
+    inset  2px  2px var(--btn-shadow);
   font-weight: bold;
+  /* subtle checkerboard pattern for pressed state */
+  background-image: url("data:image/svg+xml,%3Csvg width='2' height='2' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23c0c0c0'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23c0c0c0'/%3E%3Crect x='1' y='0' width='1' height='1' fill='%23ffffff'/%3E%3Crect x='0' y='1' width='1' height='1' fill='%23ffffff'/%3E%3C/svg%3E");
 }
 
-/* Glitch text */
+/* ── Glitch text ───────────────────────────────────────────────────── */
 .glitch-text {
   text-shadow: -3px 0 0 var(--glitch-cyan), 3px 0 0 var(--glitch-magenta);
 }
 
-/* Scrollbar Win95 */
-::-webkit-scrollbar { width: 16px; height: 16px; }
-::-webkit-scrollbar-track { background: var(--win-bg); }
-::-webkit-scrollbar-thumb {
-  background: var(--win-bg);
-  border-top: 2px solid var(--win-border-light);
-  border-left: 2px solid var(--win-border-light);
-  border-right: 2px solid var(--win-border-black);
-  border-bottom: 2px solid var(--win-border-black);
+/* ── Divider / separator ───────────────────────────────────────────── */
+.win98-separator {
+  border: none;
+  border-top: 1px solid var(--btn-shadow);
+  border-bottom: 1px solid var(--btn-highlight);
+  margin: 4px 0;
 }
-::-webkit-scrollbar-button { display: block; height: 16px; width: 16px; background: var(--win-bg); }
+
+/* ── Fieldset groupbox ─────────────────────────────────────────────── */
+.win98-groupbox {
+  border: 1px solid var(--btn-shadow);
+  box-shadow: 0 0 0 1px var(--btn-highlight);
+  padding: 10px;
+  margin: 4px 0;
+}
+.win98-groupbox > legend {
+  background: var(--win-bg);
+  padding: 0 4px;
+  color: var(--text-dark);
+}
+
+/* ── Disabled state utility ────────────────────────────────────────── */
+.win98-disabled {
+  color: var(--text-disabled) !important;
+  text-shadow: 1px 1px 0 var(--btn-highlight);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Scrollbar — authentic Win98 checkerboard track + 4-layer thumb
+   ═══════════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+::-webkit-scrollbar-corner {
+  background: var(--win-border-mid);
+}
+::-webkit-scrollbar-track {
+  background-image: url("data:image/svg+xml,%3Csvg width='2' height='2' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='%23c0c0c0'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%23c0c0c0'/%3E%3Crect x='1' y='0' width='1' height='1' fill='%23ffffff'/%3E%3Crect x='0' y='1' width='1' height='1' fill='%23ffffff'/%3E%3C/svg%3E");
+}
+::-webkit-scrollbar-thumb {
+  background: var(--win-border-mid);
+  box-shadow:
+    inset -1px -1px var(--win-border-black),
+    inset  1px  1px var(--btn-highlight),
+    inset -2px -2px var(--btn-shadow),
+    inset  2px  2px var(--win-border-mid);
+}
+::-webkit-scrollbar-button {
+  display: block;
+  height: 17px;
+  width: 16px;
+  background: var(--win-border-mid);
+  box-shadow:
+    inset -1px -1px var(--win-border-black),
+    inset  1px  1px var(--btn-highlight),
+    inset -2px -2px var(--btn-shadow),
+    inset  2px  2px var(--win-border-mid);
+}
+
+/* Up arrow */
+::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='17' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 6l-4 4h8z' fill='%23000'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* Down arrow */
+::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='17' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 11l-4-4h8z' fill='%23000'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* Left arrow */
+::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='17' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 8.5l4-4v8z' fill='%23000'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* Right arrow */
+::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='17' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 8.5l-4-4v8z' fill='%23000'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}

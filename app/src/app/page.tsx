@@ -30,7 +30,7 @@ export default function Home() {
         </div>
 
         {/* Toolbar */}
-        <div style={{ display: "flex", gap: 6, padding: "4px 6px", borderBottom: "1px solid var(--win-border-dark)", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, padding: "4px 6px", borderBottom: "1px solid var(--win-border-dark)", borderTop: "1px solid var(--win-border-mid)", alignItems: "center" }}>
           <span style={{ fontSize: 11 }}>Find:</span>
           <input
             className="inset-input"
@@ -51,7 +51,7 @@ export default function Home() {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-          <span style={{ fontSize: 11, marginLeft: "auto", color: "#666" }}>
+          <span style={{ fontSize: 11, marginLeft: "auto", color: "var(--text-secondary)" }}>
             {filtered.length} investor(s) · ${sharks.reduce((a, s) => a + s.stakedAmount, 0).toLocaleString()} staked
           </span>
         </div>
@@ -93,7 +93,7 @@ export default function Home() {
                       <div style={{ fontFamily: "var(--font-pixel)", fontSize: 24, color: "green", fontWeight: "bold" }}>
                         ${shark.stakedAmount.toLocaleString()}
                       </div>
-                      <div style={{ fontSize: 11, color: "#444", marginTop: 2 }}>{shark.title}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{shark.title}</div>
                     </div>
 
                     {/* Tags */}
@@ -122,14 +122,14 @@ export default function Home() {
                     </div>
 
                     {/* Stats row */}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#666", marginBottom: 8, padding: "0 2px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-secondary)", marginBottom: 8, padding: "0 2px" }}>
                       <span>{shark.dealsCompleted}+ deals</span>
                       <span>{shark.successRate}% success</span>
                       <span>{shark.dealType}</span>
                     </div>
 
                     {/* Quote */}
-                    <div style={{ fontSize: 10, fontStyle: "italic", color: "#555", marginBottom: 8, lineHeight: 1.3 }}>
+                    <div style={{ fontSize: 10, fontStyle: "italic", color: "var(--text-secondary)", marginBottom: 8, lineHeight: 1.3 }}>
                       &ldquo;{shark.quotes[0]}&rdquo;
                     </div>
 
@@ -144,14 +144,14 @@ export default function Home() {
           </div>
 
           {filtered.length === 0 && (
-            <div style={{ textAlign: "center", padding: 40, color: "#666", fontSize: 12 }}>
+            <div style={{ textAlign: "center", padding: 40, color: "var(--text-secondary)", fontSize: 12 }}>
               No investors match your search.
             </div>
           )}
         </div>
 
         {/* Status */}
-        <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 4px", margin: 2 }}>
+        <div style={{ borderTop: "1px solid var(--win-border-dark)", borderBottom: "1px solid var(--win-border-mid)", padding: "2px 4px", margin: "0 1px 1px" }}>
           <div className="status-bar-segment" style={{ fontSize: 11 }}>
             Select an investor to start your pitch
           </div>

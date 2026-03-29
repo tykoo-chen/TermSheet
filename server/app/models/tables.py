@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.enums import MessageRole, SessionStatus
+from app.models.enums import ApprovalStatus, MessageRole, SessionStatus
 
 
 # ── Session ─────────────────────────────────────────────────────────────────
@@ -117,11 +117,21 @@ class InvestRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         String(42), nullable=False, comment="USDC receiving wallet"
     )
 
-    # On-chain reference
+    # ── Approval workflow ──
+    approval_status: Mapped[ApprovalStatus] = mapped_column(
+        default=ApprovalStatus.PENDING_REVIEW, index=True
+    )
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), comment="Admin user who reviewed"
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_notes: Mapped[str | None] = mapped_column(Text)
+
+    # On-chain reference (filled after approval + actual funding)
     tx_hash: Mapped[str | None] = mapped_column(String(66))
 
     funded_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True)
     )
 
     # ── relationships ──

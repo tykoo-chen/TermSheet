@@ -21,7 +21,7 @@ def upgrade() -> None:
     # Clean up any existing duplicates before adding the constraint:
     # keep only the most recent IN_PROGRESS session per (user_id, investor_id).
     op.execute("""
-        UPDATE sessions SET status = 'pending'
+        UPDATE sessions SET status = 'PENDING'
         WHERE id IN (
             SELECT id FROM (
                 SELECT id,
@@ -30,7 +30,7 @@ def upgrade() -> None:
                            ORDER BY created_at DESC
                        ) AS rn
                 FROM sessions
-                WHERE status = 'in_progress'
+                WHERE status = 'IN_PROGRESS'
             ) ranked
             WHERE rn > 1
         )
@@ -39,7 +39,7 @@ def upgrade() -> None:
     op.execute("""
         CREATE UNIQUE INDEX uq_one_active_session_per_investor
         ON sessions (user_id, investor_id)
-        WHERE status = 'in_progress'
+        WHERE status = 'IN_PROGRESS'
     """)
 
 

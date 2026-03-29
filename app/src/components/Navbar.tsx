@@ -46,7 +46,7 @@ export default function Navbar() {
         Start
       </button>
 
-      <div style={{ borderLeft: "2px solid var(--win-border-dark)", borderRight: "1px solid var(--win-border-light)", margin: "0 4px", height: "100%" }} />
+      <div style={{ borderLeft: "1px solid var(--win-border-dark)", borderRight: "1px solid var(--win-border-mid)", margin: "0 4px", height: "100%" }} />
 
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
@@ -60,15 +60,11 @@ export default function Navbar() {
       <div
         style={{
           marginLeft: "auto",
-          borderTop: "2px solid var(--win-border-dark)",
-          borderLeft: "2px solid var(--win-border-dark)",
-          borderRight: "2px solid var(--win-border-light)",
-          borderBottom: "2px solid var(--win-border-light)",
+          boxShadow: "inset -1px -1px var(--win-border-mid), inset 1px 1px var(--btn-shadow)",
           padding: "0 10px",
           display: "flex",
           alignItems: "center",
           gap: 8,
-          background: "var(--win-bg)",
         }}
       >
         {user ? (

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.graph import create_graph, get_system_prompt
 from app.core.auth import get_current_user
 from app.core.database import get_db, async_session
-from app.models.enums import MessageRole, SessionStatus
+from app.models.enums import ApprovalStatus, MessageRole, SessionStatus
 from app.models.schemas import (
     ChatRequest,
     ChatResponse,
@@ -21,7 +21,7 @@ from app.models.schemas import (
     StartSessionRequest,
     StartSessionResponse,
 )
-from app.models.tables import Message, Session
+from app.models.tables import InvestRecord, Message, Session
 
 router = APIRouter()
 
@@ -450,10 +450,20 @@ async def chat_stream(
                 result = await db2.execute(stmt)
                 sess = result.scalar_one_or_none()
                 if sess:
-                    sess.status = (
-                        SessionStatus.PASS if deal_decision == "invest"
-                        else SessionStatus.REJECT
-                    )
+                    if deal_decision == "invest":
+                        # AI approved → pending human review (not final pass yet)
+                        sess.status = SessionStatus.PENDING
+                        db2.add(
+                            InvestRecord(
+                                session_id=uuid.UUID(session_id_str),
+                                investor_id=sess.investor_id,
+                                amount=0,  # placeholder — filled during review
+                                wallet_address="",  # placeholder — filled by founder
+                                approval_status=ApprovalStatus.PENDING_REVIEW,
+                            )
+                        )
+                    else:
+                        sess.status = SessionStatus.REJECT
             await db2.commit()
 
     return StreamingResponse(

@@ -6,7 +6,7 @@ Models package — re-exports everything so consumers can do:
 """
 
 from app.models.base import Base
-from app.models.enums import MessageRole, SessionStatus
+from app.models.enums import ApprovalStatus, MessageRole, SessionStatus
 from app.models.tables import InvestRecord, Message, Session
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "Session",
     "Message",
     "InvestRecord",
+    "ApprovalStatus",
     "SessionStatus",
     "MessageRole",
 ]

@@ -102,7 +102,7 @@ export default function BootScreen({ children }: { children: React.ReactNode }) 
                   }}>
                     ARE YOU READY<br />TO PITCH?
                   </p>
-                  <p style={{ fontSize: 12, color: "#444" }}>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                     TermSheet will initialize the funding mainframe.
                     <br />
                     Investors have staked real capital. This is not a drill.
@@ -111,7 +111,7 @@ export default function BootScreen({ children }: { children: React.ReactNode }) 
               </div>
 
               {/* Separator */}
-              <hr style={{ border: "none", borderTop: "1px solid var(--win-border-dark)", borderBottom: "1px solid var(--win-border-light)", marginBottom: 16 }} />
+              <hr className="win98-separator" style={{ marginBottom: 16 }} />
 
               {/* Terminal preview */}
               <div className="inset-box" style={{
@@ -149,7 +149,7 @@ export default function BootScreen({ children }: { children: React.ReactNode }) 
               </div>
             </div>
             {/* Status bar */}
-            <div style={{ borderTop: "1px solid var(--win-border-dark)", padding: "2px 6px", margin: 2, display: "flex" }}>
+            <div style={{ borderTop: "1px solid var(--win-border-dark)", borderBottom: "1px solid var(--win-border-mid)", padding: "2px 6px", margin: "0 1px 1px", display: "flex" }}>
               <div className="status-bar-segment" style={{ flexGrow: 1, fontSize: 11 }}>
                 Ready to connect to funding mainframe...
               </div>

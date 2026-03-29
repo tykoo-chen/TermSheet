@@ -48,7 +48,7 @@ export default function LoginPage() {
           {/* Icon row */}
           <div style={{ textAlign: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 32 }}>🔐</span>
-            <div style={{ fontSize: 11, color: "#444", marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
               {isSignUp ? "Create your account to start pitching" : "Enter your credentials to continue"}
             </div>
           </div>

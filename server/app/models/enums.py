@@ -10,6 +10,12 @@ class SessionStatus(str, enum.Enum):
     REJECT = "reject"
 
 
+class ApprovalStatus(str, enum.Enum):
+    PENDING_REVIEW = "pending_review"  # AI decided to invest, awaiting human review
+    APPROVED = "approved"              # Human approved the investment
+    REJECTED = "rejected"              # Human rejected the investment
+
+
 class MessageRole(str, enum.Enum):
     USER = "user"
     ASSISTANT = "assistant"
