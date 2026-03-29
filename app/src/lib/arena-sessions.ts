@@ -16,6 +16,7 @@ export interface ArenaSession {
   sessionId: string;
   vcs: Record<string, ArenaVCSession>;
   createdAt: number;
+  prepaid?: boolean; // credits deducted upfront via /api/deduct-credits
 }
 
 const g = globalThis as typeof globalThis & {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sharks } from "@/lib/mock-data";
-import { consumeCredit } from "@/lib/pitch-credits";
+import { consumeCredit, getAccount } from "@/lib/pitch-credits";
 import { paidPitchSessions } from "@/lib/paid-sessions";
 import { getGraph } from "@/agent/graph";
 import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
@@ -232,26 +232,33 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Payment gate ────────────────────────────────────────────────────────
-    // Priority 1: x-pitch-token header (Claude Code / API users)
     const pitchToken = req.headers.get("x-pitch-token");
-    if (pitchToken) {
+    const arenaPrepaid = req.headers.get("x-arena-prepaid") === "1";
+
+    if (pitchToken && arenaPrepaid) {
+      // Arena builtin agent: credits were deducted upfront via /api/deduct-credits
+      // Just verify token is still valid — don't deduct per call
+      const account = getAccount(pitchToken);
+      if (!account || account.status !== "active") {
+        return NextResponse.json({ error: "Invalid pitch token" }, { status: 402 });
+      }
+    } else if (pitchToken) {
+      // External agent (Claude Code, API): deduct 1 credit per call
       const account = consumeCredit(pitchToken);
       if (!account) {
         return NextResponse.json(
-          { error: "Invalid or exhausted pitch token. Buy more credits at termsheet.io/connect" },
+          { error: "Invalid or exhausted pitch token. Buy more credits at /connect" },
           { status: 402 }
         );
       }
-      // Token valid — proceed with no further payment check
-    } else if (process.env.STRIPE_SECRET_KEY) {
-      // Priority 2: Stripe-paid per-pitch session (existing web flow)
-      // Only enforce if Stripe is configured. Dev/arena mode bypasses payment.
+    } else if (!process.env.STRIPE_SECRET_KEY) {
+      // Dev mode: no payment configured — allow freely
+    } else {
+      // No token and Stripe is configured — require payment
       const paidSession = sessionId ? paidPitchSessions.get(sessionId) : null;
-      const isArenaOrDev =
-        req.headers.get("x-arena-mode") === "1" || !process.env.STRIPE_SECRET_KEY;
-      if (!paidSession && !isArenaOrDev) {
+      if (!paidSession) {
         return NextResponse.json(
-          { error: "Payment required. Complete checkout before pitching." },
+          { error: "Payment required. Get a pitch token at /connect" },
           { status: 402 }
         );
       }

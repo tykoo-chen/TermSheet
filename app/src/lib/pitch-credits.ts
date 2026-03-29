@@ -37,3 +37,13 @@ export function consumeCredit(token: string): PitchAccount | null {
 export function getAccount(token: string): PitchAccount | null {
   return pitchAccounts.get(token) ?? null;
 }
+
+/** Deduct N credits upfront (for bulk pre-payment, e.g. arena launch). */
+export function deductCredits(token: string, amount: number): PitchAccount | null {
+  const account = pitchAccounts.get(token);
+  if (!account || account.status !== "active") return null;
+  if (account.credits < amount) return null;
+  account.credits -= amount;
+  account.usedCredits += amount;
+  return account;
+}

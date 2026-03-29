@@ -130,10 +130,24 @@ export default function ArenaPage() {
 
   // ── Built-in agent state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<"form" | "running" | "done">("form");
+  // Startup profile
   const [startupName, setStartupName] = useState("");
   const [startupDesc, setStartupDesc] = useState("");
   const [traction, setTraction] = useState("");
   const [team, setTeam] = useState("");
+  const [arr, setArr] = useState("");
+  const [mrr, setMrr] = useState("");
+  const [growthRate, setGrowthRate] = useState("");
+  const [raiseAmount, setRaiseAmount] = useState("");
+  const [deckName, setDeckName] = useState<string | null>(null);
+  const [deckUrl, setDeckUrl] = useState<string | null>(null);
+  const [deckUploading, setDeckUploading] = useState(false);
+  // Credit gate
+  const [builtinToken, setBuiltinToken] = useState<string | null>(null);
+  const [builtinCredits, setBuiltinCredits] = useState<number | null>(null);
+  const [creditError, setCreditError] = useState<string | null>(null);
+  const [launching, setLaunching] = useState(false);
+
   const [vcStates, setVcStates] = useState<VCState[]>([]);
   const runningRef = useRef(false);
 
@@ -169,12 +183,34 @@ export default function ArenaPage() {
     const stored = localStorage.getItem("termsheet-pitch-token");
     if (stored) {
       setPitchToken(stored);
+      setBuiltinToken(stored);
       fetch(`/api/credits?token=${stored}`)
         .then((r) => r.json())
-        .then((d) => { if (d.credits !== undefined) setTokenCredits(d.credits); })
+        .then((d) => {
+          if (d.credits !== undefined) {
+            setTokenCredits(d.credits);
+            setBuiltinCredits(d.credits);
+          }
+        })
         .catch(() => {});
     }
   }, []);
+
+  // ── Deck upload ────────────────────────────────────────────────────────
+  const handleDeckUpload = async (file: File) => {
+    if (!file) return;
+    setDeckUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("deck", file);
+      const res = await fetch("/api/upload-deck", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      setDeckName(data.name);
+      setDeckUrl(data.url ?? null);
+    } catch { alert("Deck upload failed"); }
+    finally { setDeckUploading(false); }
+  };
 
   const downloadClaudeMd = () => {
     const token = pitchToken ?? "<get-token-from-termsheet.xyz/connect>";
@@ -282,13 +318,29 @@ Ask:
     setVcStates((prev) => prev.map((vc) => vc.sharkId === sharkId ? { ...vc, ...patch } : vc));
   }, []);
 
-  const startupInfo = `Company: ${startupName}\nWhat it does: ${startupDesc}\nTraction: ${traction || "Early stage"}\nTeam: ${team || "Solo founder"}`.trim();
+  const startupInfo = [
+    `Company: ${startupName}`,
+    `What it does: ${startupDesc}`,
+    arr ? `ARR: ${arr}` : null,
+    mrr ? `MRR: ${mrr}` : null,
+    growthRate ? `Month-over-month growth: ${growthRate}` : null,
+    raiseAmount ? `Raising: ${raiseAmount}` : null,
+    traction ? `Traction: ${traction}` : "Traction: Early stage",
+    `Team: ${team || "Solo founder"}`,
+    deckUrl ? `Pitch deck: ${deckUrl}` : deckName ? `Pitch deck: ${deckName} (uploaded)` : null,
+  ].filter(Boolean).join("\n");
 
-  const runVCAgent = useCallback(async (sharkId: string, sessionId: string) => {
+  const runVCAgent = useCallback(async (sharkId: string, sessionId: string, token: string | null) => {
     const MAX_ROUNDS = 8;
     let round = 0;
     let history: Message[] = [];
     let currentDecision: "PENDING" | "ACCEPT" | "REJECT" = "PENDING";
+
+    const chatHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      chatHeaders["x-pitch-token"] = token;
+      chatHeaders["x-arena-prepaid"] = "1"; // credits deducted upfront
+    }
 
     while (round < MAX_ROUNDS && currentDecision === "PENDING" && runningRef.current) {
       updateVC(sharkId, { agentTyping: true });
@@ -315,7 +367,7 @@ Ask:
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: chatHeaders,
           body: JSON.stringify({ sharkId, sessionId, roundNumber: round + 1, messages: history.map((m) => ({ role: m.role, content: m.content })) }),
         });
         const data = await res.json();
@@ -336,17 +388,52 @@ Ask:
     if (currentDecision === "PENDING") updateVC(sharkId, { decision: "REJECT" });
   }, [startupInfo, startupName, updateVC]);
 
-  const launchAgent = () => {
+  const launchAgent = async () => {
     if (!startupName.trim() || !startupDesc.trim()) return;
-    runningRef.current = true;
+    setCreditError(null);
+    setLaunching(true);
+
+    // Generate session IDs for all VCs upfront
     const initial: VCState[] = sharks.map((s) => ({
       sharkId: s.id, name: s.name, avatar: s.avatar, messages: [],
       agentTyping: false, vcTyping: false, score: 0, decision: "PENDING",
       sessionId: crypto.randomUUID(), roundNumber: 0, stakedAmount: s.stakedAmount,
     }));
+
+    // Deduct credits if token present (skip in dev mode)
+    const token = builtinToken;
+    if (token) {
+      try {
+        const res = await fetch("/api/deduct-credits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            amount: sharks.length,
+            sessionIds: initial.map((v) => v.sessionId),
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setCreditError(data.error ?? "Insufficient credits");
+          setLaunching(false);
+          return;
+        }
+        setBuiltinCredits(data.creditsRemaining);
+      } catch {
+        setCreditError("Network error — could not verify credits");
+        setLaunching(false);
+        return;
+      }
+    }
+
+    runningRef.current = true;
     setVcStates(initial);
     setPhase("running");
-    initial.forEach((vc, i) => setTimeout(() => runVCAgent(vc.sharkId, vc.sessionId), i * 800));
+    setLaunching(false);
+    initial.forEach((vc, i) =>
+      setTimeout(() => runVCAgent(vc.sharkId, vc.sessionId, token), i * 800)
+    );
   };
 
   const stopAgent = () => { runningRef.current = false; setPhase("done"); };
@@ -440,43 +527,146 @@ for (const sharkId of VCS) {
       {/* ── BUILTIN MODE ── */}
       {mode === "builtin" && (
         phase === "form" ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div className="win95-window" style={{ width: 520 }}>
-              <div className="win95-title-bar"><span>🚀 Startup Brief — Agent will pitch all {sharks.length} VCs simultaneously</span></div>
-              <div style={{ padding: 20 }}>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Company name *</label>
-                  <input className="inset-input" value={startupName} onChange={(e) => setStartupName(e.target.value)}
-                    placeholder="e.g. Acme AI" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+          <div style={{ flex: 1, overflow: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "8px 4px" }}>
+            <div className="win95-window" style={{ width: 580 }}>
+              <div className="win95-title-bar">
+                <span>🚀 Startup Profile — Agent pitches all {sharks.length} VCs simultaneously</span>
+              </div>
+              <div style={{ padding: 16 }}>
+
+                {/* ── Section: Basics ── */}
+                <div style={{ fontWeight: "bold", fontSize: 11, borderBottom: "1px solid #aaa", marginBottom: 10, paddingBottom: 3, letterSpacing: 1 }}>
+                  STARTUP INFO
                 </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>What you&apos;re building *</label>
-                  <textarea className="inset-input" value={startupDesc} onChange={(e) => setStartupDesc(e.target.value)}
-                    placeholder="e.g. AI agent that automates tax filing for freelancers"
-                    style={{ width: "100%", fontSize: 12, padding: "3px 6px", height: 70, resize: "none", fontFamily: "inherit" }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Company name *</label>
+                    <input className="inset-input" value={startupName} onChange={(e) => setStartupName(e.target.value)}
+                      placeholder="e.g. Acme AI" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>One-liner / what you&apos;re building *</label>
+                    <textarea className="inset-input" value={startupDesc} onChange={(e) => setStartupDesc(e.target.value)}
+                      placeholder="e.g. AI agent that automates tax filing for freelancers — saves 20hrs/yr per user"
+                      style={{ width: "100%", fontSize: 12, padding: "3px 6px", height: 56, resize: "none", fontFamily: "inherit" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>ARR</label>
+                    <input className="inset-input" value={arr} onChange={(e) => setArr(e.target.value)}
+                      placeholder="e.g. $120K ARR" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>MRR</label>
+                    <input className="inset-input" value={mrr} onChange={(e) => setMrr(e.target.value)}
+                      placeholder="e.g. $10K MRR" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>MoM growth</label>
+                    <input className="inset-input" value={growthRate} onChange={(e) => setGrowthRate(e.target.value)}
+                      placeholder="e.g. 18% MoM" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Raising</label>
+                    <input className="inset-input" value={raiseAmount} onChange={(e) => setRaiseAmount(e.target.value)}
+                      placeholder="e.g. $2M seed at $10M cap" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Traction highlights</label>
+                    <input className="inset-input" value={traction} onChange={(e) => setTraction(e.target.value)}
+                      placeholder="e.g. 500 paying users, 92% retention" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Team</label>
+                    <input className="inset-input" value={team} onChange={(e) => setTeam(e.target.value)}
+                      placeholder="e.g. Ex-Google + ex-Stripe" style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                  </div>
                 </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Traction / numbers</label>
-                  <input className="inset-input" value={traction} onChange={(e) => setTraction(e.target.value)}
-                    placeholder="e.g. 500 beta users, $8K MRR, 15% WoW growth"
-                    style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+
+                {/* ── Section: Pitch Deck ── */}
+                <div style={{ fontWeight: "bold", fontSize: 11, borderBottom: "1px solid #aaa", marginBottom: 10, paddingBottom: 3, letterSpacing: 1 }}>
+                  PITCH DECK <span style={{ fontWeight: "normal", color: "#888" }}>(optional — PDF)</span>
                 </div>
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Team</label>
-                  <input className="inset-input" value={team} onChange={(e) => setTeam(e.target.value)}
-                    placeholder="e.g. Ex-Google engineer + ex-Stripe PM"
-                    style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
+                <div style={{ marginBottom: 14 }}>
+                  {deckName ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "#001a00", border: "1px solid lime" }}>
+                      <span style={{ color: "lime", fontSize: 11 }}>✓ {deckName}</span>
+                      {deckUrl && <a href={deckUrl} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#00ff88" }}>view ↗</a>}
+                      <button className="win95-btn" style={{ fontSize: 10, padding: "1px 8px", marginLeft: "auto" }}
+                        onClick={() => { setDeckName(null); setDeckUrl(null); }}>Remove</button>
+                    </div>
+                  ) : (
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                      <input type="file" accept="application/pdf" style={{ display: "none" }}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDeckUpload(f); }} />
+                      <button className="win95-btn" style={{ fontSize: 11, padding: "3px 12px" }}
+                        onClick={(e) => { e.preventDefault(); (e.currentTarget.parentElement?.querySelector("input[type=file]") as HTMLElement)?.click(); }}>
+                        {deckUploading ? "Uploading..." : "📎 Upload PDF"}
+                      </button>
+                      <span style={{ fontSize: 10, color: "#888" }}>Agent will reference deck in pitches · max 20MB</span>
+                    </label>
+                  )}
                 </div>
-                <div className="inset-box" style={{ fontSize: 10, padding: 8, marginBottom: 16, color: "#555", lineHeight: 1.6 }}>
-                  ⚡ Agent generates <strong>tailored messages per VC</strong> — each investor gets a pitch calibrated to their thesis and scoring criteria
+
+                {/* ── Section: Credits + Launch ── */}
+                <div style={{ fontWeight: "bold", fontSize: 11, borderBottom: "1px solid #aaa", marginBottom: 10, paddingBottom: 3, letterSpacing: 1 }}>
+                  CREDITS
                 </div>
+                {builtinToken ? (
+                  <div style={{ marginBottom: 14 }}>
+                    {(builtinCredits !== null && builtinCredits < sharks.length) ? (
+                      <div style={{ padding: 10, background: "#1a0000", border: "1px solid #cc0000", marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: "#ff6666", marginBottom: 6 }}>
+                          ⚠ You have {builtinCredits} credit{builtinCredits !== 1 ? "s" : ""} — pitching all {sharks.length} VCs costs {sharks.length} credits.
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <Link href="/connect">
+                            <button className="win95-btn" style={{ fontSize: 11, padding: "3px 12px", background: "#ffff00", fontWeight: "bold" }}>
+                              Buy more credits →
+                            </button>
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: "6px 10px", background: "#001a00", border: "1px solid lime", fontSize: 11, color: "#aaffaa", marginBottom: 8 }}>
+                        ✓ {builtinCredits !== null ? `${builtinCredits} credits` : "Credits available"} · Pitching {sharks.length} VCs will use {sharks.length} credits
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ padding: 10, background: "#1a1a00", border: "1px solid #888", marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, color: "#cccc00", marginBottom: 6 }}>
+                      No pitch token found. Pre-fund credits to pitch.
+                    </div>
+                    <Link href="/connect">
+                      <button className="win95-btn" style={{ fontSize: 11, padding: "3px 14px", background: "#ffff00", fontWeight: "bold" }}>
+                        Get Credits →
+                      </button>
+                    </Link>
+                    <span style={{ fontSize: 10, color: "#666", marginLeft: 8 }}>or continue without payment (dev mode)</span>
+                  </div>
+                )}
+
+                {creditError && (
+                  <div style={{ padding: "6px 10px", background: "#1a0000", border: "1px solid red", fontSize: 11, color: "#ff6666", marginBottom: 10 }}>
+                    ⚠ {creditError}
+                  </div>
+                )}
+
+                <div className="inset-box" style={{ fontSize: 10, padding: 8, marginBottom: 14, color: "#555", lineHeight: 1.6 }}>
+                  ⚡ Agent generates <strong>tailored messages per VC</strong> — each investor gets a pitch calibrated to their thesis. 1 credit per VC = {sharks.length} credits total.
+                </div>
+
                 <button
                   className="win95-btn"
-                  style={{ width: "100%", fontWeight: "bold", fontSize: 14, padding: "8px 0", background: "#000080", color: "white", border: "2px outset #4444ff", opacity: (!startupName.trim() || !startupDesc.trim()) ? 0.5 : 1 }}
+                  style={{
+                    width: "100%", fontWeight: "bold", fontSize: 14, padding: "8px 0",
+                    background: "#000080", color: "white", border: "2px outset #4444ff",
+                    opacity: (!startupName.trim() || !startupDesc.trim() || launching) ? 0.5 : 1,
+                  }}
                   onClick={launchAgent}
-                  disabled={!startupName.trim() || !startupDesc.trim()}
+                  disabled={!startupName.trim() || !startupDesc.trim() || launching}
                 >
-                  ⚡ Launch Agent — Pitch All {sharks.length} VCs
+                  {launching ? "⏳ Deducting credits..." : `⚡ Launch Agent — Pitch All ${sharks.length} VCs`}
                 </button>
               </div>
             </div>

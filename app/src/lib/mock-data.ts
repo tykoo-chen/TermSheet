@@ -227,8 +227,8 @@ SPEAKING STYLE: Calm, Socratic, unsettling. You ask questions that make founders
     id: "david-sacks",
     name: "David Sacks",
     avatar: "/avatars/david-sacks.png",
-    title: "Founder, Craft Ventures | US AI & Crypto Czar",
-    bio: "PayPal COO (original PayPal Mafia). Founded Yammer ($1.2B acquired by Microsoft). Founded Craft Ventures. Co-host of the All-In Podcast. Appointed by Donald Trump as the US AI & Crypto Policy Czar in 2025. The most politically connected VC in America.",
+    title: "Founder, Craft Ventures | Former US AI & Crypto Czar | PCAST Co-Chair",
+    bio: "PayPal COO (original PayPal Mafia). Founded Yammer ($1.2B acquired by Microsoft). Founded Craft Ventures. Appointed by Donald Trump as the US AI & Crypto Policy Czar in January 2025, stepped down March 2026 after exhausting his 130-day SGE term; now serves as Co-Chair of PCAST (President's Council of Advisers on Science and Technology). Co-host of the All-In Podcast.",
     stakedAmount: 6000,
     sectors: ["Enterprise SaaS", "Crypto", "AI"],
     stage: "Seed",
@@ -461,8 +461,8 @@ SPEAKING STYLE: Direct, uses rap lyrics and hip-hop references, shares hard pers
     id: "roelof-botha",
     name: "Roelof Botha",
     avatar: "/avatars/roelof-botha.png",
-    title: "Managing Partner, Sequoia Capital",
-    bio: "Managing Partner at Sequoia Capital. Former CFO of PayPal (PayPal Mafia). South African. Led investments in YouTube ($8.5M → $1.65B Google acquisition), Instagram, Square, Unity, MongoDB. Took over Sequoia US after Doug Leone. Methodical, long-term, and relentless.",
+    title: "General Partner, Sequoia Capital",
+    bio: "General Partner at Sequoia Capital. Former CFO of PayPal (PayPal Mafia). South African. Led investments in YouTube ($8.5M → $1.65B Google acquisition), Instagram, Square, Unity, MongoDB. Served as Steward (managing partner) of Sequoia US 2022–2025; stepped down from Steward role in November 2025, succeeded by Alfred Lin and Pat Grady as co-stewards. Methodical, long-term, and relentless.",
     stakedAmount: 9000,
     sectors: ["Enterprise", "Consumer", "Healthcare", "AI"],
     stage: "Seed",
@@ -473,7 +473,7 @@ SPEAKING STYLE: Direct, uses rap lyrics and hip-hop references, shares hard pers
     totalDeployed: 10000000000,
     joinedDate: "2024-01",
     thesis: "We invest in companies that stand the test of time. Sequoia has been doing this since 1972 — Apple, Google, Oracle, YouTube, Stripe, Unity. The pattern: exceptional founders, a market that's ready, and an insight that others have missed. We're patient. We think in decades.",
-    personality: `You are Roelof Botha, Managing Partner at Sequoia Capital. You combine the rigor of a former PayPal CFO with the long-term thinking of one of history's greatest VC firms.
+    personality: `You are Roelof Botha, General Partner at Sequoia Capital. You combine the rigor of a former PayPal CFO with the long-term thinking of one of history's greatest VC firms.
 
 PERSONALITY TRAITS:
 - Meticulous, analytical, and long-term. Sequoia has a 50-year track record and you're building on it.
@@ -507,8 +507,8 @@ SPEAKING STYLE: Precise, calm, long-term framing. You ask questions about 10-yea
     id: "zhu-xiaohu",
     name: "朱啸虎 (Zhu Xiaohu)",
     avatar: "/avatars/zhu-xiaohu.png",
-    title: "Managing Partner, GGV Capital (China)",
-    bio: "Managing Partner at GGV Capital (China operations). One of China's most outspoken and controversial VCs. Famous for public debates with fellow VCs, calling out market bubbles, and blunt verdicts on the sharing economy. Early investor in DiDi Chuxing, Mobike, BOSS直聘. Known for 资本是懦夫 (capital is a coward).",
+    title: "Managing Partner, 金沙江创投 (GSR Ventures)",
+    bio: "Managing Partner at 金沙江创投 (GSR Ventures / Jinshajiang Venture Capital). One of China's most outspoken and controversial VCs. Famous for public debates with fellow VCs, calling out market bubbles, and blunt verdicts on the sharing economy. Early investor in DiDi Chuxing, Mobike, BOSS直聘. Known for 资本是懦夫 (capital is a coward).",
     stakedAmount: 6000,
     sectors: ["Consumer China", "O2O", "AI China", "SaaS"],
     stage: "Series A",
@@ -519,7 +519,7 @@ SPEAKING STYLE: Precise, calm, long-term framing. You ask questions about 10-yea
     totalDeployed: 3000000000,
     joinedDate: "2024-01",
     thesis: "资本是懦夫。在中国，市场竞争决定一切——最快跑到第一名的人赢。我投的是能够快速跑通商业模式、迅速占领市场份额的公司。DiDi 打败 Uber 中国不是因为产品更好，而是执行速度和本土化更彻底。执行力是中国市场唯一的护城河。",
-    personality: `You are 朱啸虎 (Zhu Xiaohu), Managing Partner at GGV Capital China. You are the most outspoken, combative, and market-focused VC in China.
+    personality: `You are 朱啸虎 (Zhu Xiaohu), Managing Partner at 金沙江创投 (GSR Ventures). You are the most outspoken, combative, and market-focused VC in China.
 
 PERSONALITY TRAITS:
 - You declared "资本是懦夫" (capital is a coward) — capital follows the winner, it doesn't create them.
@@ -548,7 +548,7 @@ SPEAKING STYLE: Blunt, fast, uses competition analogies. Provocative but backs i
       "互联网创业，第一名才有价值，第二名几乎一文不值。",
       "有争议才有机会。没有争议的地方，都已经被占领了。",
     ],
-    socials: { twitter: "@zhuxiaohu", website: "https://ggvc.com" },
+    socials: { twitter: "@zhuxiaohu", website: "https://gsrventureschina.com" },
   },
   {
     id: "neil-shen",
@@ -596,7 +596,7 @@ SPEAKING STYLE: Minimal, precise, intimidating. Your questions cut through to th
       "I have made more mistakes than any investor alive. But the ones I got right more than covered them.",
       "In China, the regulatory environment is a feature, not a bug. Founders who understand this win.",
     ],
-    socials: { twitter: "@neilshen", website: "https://sequoiacap.com/china" },
+    socials: { twitter: "@neilshen", website: "https://hongshan.com" },
   },
   {
     id: "anna-fang",
