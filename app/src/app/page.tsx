@@ -27,12 +27,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Arena Banner */}
-        <div style={{ padding: "6px 8px", background: "#000080", display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid var(--win-border-dark)" }}>
-          <span style={{ color: "white", fontFamily: "var(--font-pixel)", fontSize: 12, letterSpacing: 1 }}>⚡ ARENA MODE: Pitch all 3 VCs simultaneously</span>
-          <Link href="/arena" style={{ marginLeft: "auto" }}>
-            <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 11, padding: "2px 14px", background: "yellow" }}>
-              Enter Arena →
+        {/* Banner row */}
+        <div style={{ padding: "4px 8px", background: "#000080", display: "flex", alignItems: "center", gap: 8, borderBottom: "2px solid var(--win-border-dark)", flexWrap: "wrap" }}>
+          <span style={{ color: "white", fontFamily: "var(--font-pixel)", fontSize: 11, letterSpacing: 1 }}>⚡ ARENA: Pitch all 3 VCs at once</span>
+          <Link href="/arena">
+            <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 11, padding: "1px 10px", background: "yellow" }}>
+              Enter →
+            </button>
+          </Link>
+          <div style={{ width: 1, background: "#4444aa", alignSelf: "stretch", margin: "0 4px" }} />
+          <span style={{ color: "#aaf", fontFamily: "var(--font-pixel)", fontSize: 11 }}>🔌 Let Claude pitch for you</span>
+          <Link href="/connect" style={{ marginLeft: "auto" }}>
+            <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 11, padding: "1px 10px", background: "#00ff88" }}>
+              Get Claude Code →
             </button>
           </Link>
         </div>
