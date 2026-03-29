@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sharks } from "@/lib/mock-data";
+import { consumeCredit } from "@/lib/pitch-credits";
+import { paidPitchSessions } from "@/lib/paid-sessions";
 
 // In-memory session store for approved pitches (MVP — use Redis in production)
 // sessionId → { sharkId, score, approvedAt }
@@ -225,6 +227,33 @@ export async function POST(req: NextRequest) {
     if (!shark) {
       return NextResponse.json({ error: "Investor not found" }, { status: 404 });
     }
+
+    // ── Payment gate ────────────────────────────────────────────────────────
+    // Priority 1: x-pitch-token header (Claude Code / API users)
+    const pitchToken = req.headers.get("x-pitch-token");
+    if (pitchToken) {
+      const account = consumeCredit(pitchToken);
+      if (!account) {
+        return NextResponse.json(
+          { error: "Invalid or exhausted pitch token. Buy more credits at termsheet.io/connect" },
+          { status: 402 }
+        );
+      }
+      // Token valid — proceed with no further payment check
+    } else if (process.env.STRIPE_SECRET_KEY) {
+      // Priority 2: Stripe-paid per-pitch session (existing web flow)
+      // Only enforce if Stripe is configured. Dev/arena mode bypasses payment.
+      const paidSession = sessionId ? paidPitchSessions.get(sessionId) : null;
+      const isArenaOrDev =
+        req.headers.get("x-arena-mode") === "1" || !process.env.STRIPE_SECRET_KEY;
+      if (!paidSession && !isArenaOrDev) {
+        return NextResponse.json(
+          { error: "Payment required. Complete checkout before pitching." },
+          { status: 402 }
+        );
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     const apiKey = process.env.XAI_API_KEY;
     if (!apiKey) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { paidPitchSessions } from "@/lib/paid-sessions";
+import { pitchAccounts } from "@/lib/pitch-credits";
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -29,15 +30,42 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const pitchSessionId = session.metadata?.pitchSessionId;
-    const sharkId = session.metadata?.sharkId;
+    const meta = session.metadata ?? {};
 
-    if (pitchSessionId && sharkId) {
-      paidPitchSessions.set(pitchSessionId, {
-        sharkId,
-        paidAt: Date.now(),
-        checkoutId: session.id,
-      });
+    if (meta.type === "credit_bundle") {
+      // Activate pre-generated pitch token with credits
+      const token = meta.pitchToken;
+      const credits = parseInt(meta.credits ?? "0", 10);
+      if (token && credits > 0) {
+        const existing = pitchAccounts.get(token);
+        if (existing) {
+          existing.status = "active";
+          existing.credits = credits;
+          existing.stripeSessionId = session.id;
+        } else {
+          // Fallback: create fresh entry
+          pitchAccounts.set(token, {
+            token,
+            credits,
+            walletAddress: meta.walletAddress || undefined,
+            createdAt: Date.now(),
+            usedCredits: 0,
+            stripeSessionId: session.id,
+            status: "active",
+          });
+        }
+      }
+    } else {
+      // Original per-pitch Stripe payment
+      const pitchSessionId = meta.pitchSessionId;
+      const sharkId = meta.sharkId;
+      if (pitchSessionId && sharkId) {
+        paidPitchSessions.set(pitchSessionId, {
+          sharkId,
+          paidAt: Date.now(),
+          checkoutId: session.id,
+        });
+      }
     }
   }
 

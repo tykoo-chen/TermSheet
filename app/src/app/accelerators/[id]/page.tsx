@@ -41,7 +41,7 @@ export default function AcceleratorDetailPage() {
               <img
                 src={acc.avatar}
                 alt={acc.name}
-                style={{ width: 200, height: 200, border: "3px inset", borderRadius: 6, objectFit: "cover" }}
+                style={{ width: 200, height: 200, border: "3px inset", borderRadius: 6, objectFit: "contain", background: "white", padding: 8 }}
               />
             </div>
             <div style={{ flex: 1, minWidth: 240 }}>

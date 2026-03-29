@@ -94,7 +94,7 @@ export default function AcceleratorsPage() {
                       <img
                         src={acc.avatar}
                         alt={acc.name}
-                        style={{ width: 200, height: 200, borderRadius: 6, border: "3px inset", objectFit: "cover", margin: "0 auto" }}
+                        style={{ width: 200, height: 200, borderRadius: 6, border: "3px inset", objectFit: "contain", background: "white", padding: 8, margin: "0 auto" }}
                       />
                     </div>
 
