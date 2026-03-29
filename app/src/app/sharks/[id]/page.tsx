@@ -8,7 +8,7 @@ import { prepareContractCall, getContract } from "thirdweb";
 import { client } from "@/lib/thirdweb";
 import { base } from "thirdweb/chains";
 
-// USDC on Base — 6 decimals, $1 = 1_000_000
+// USDC on Base — 6 decimals, $0.05 = 50_000
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 // Platform treasury — receives pitch fees. Set NEXT_PUBLIC_PLATFORM_WALLET in env.
 const PLATFORM_WALLET =
@@ -166,7 +166,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     return prepareContractCall({
       contract: usdcContract,
       method: "function transfer(address to, uint256 amount) returns (bool)",
-      params: [PLATFORM_WALLET as `0x${string}`, BigInt(1_000_000)], // $1 USDC
+      params: [PLATFORM_WALLET as `0x${string}`, BigInt(50_000)], // $0.05 USDC
     });
   };
 
@@ -474,7 +474,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                 <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 16, textAlign: "left", lineHeight: 1.8 }}>
                   <div>⏱ <strong>Session limit:</strong> 10 minutes</div>
                   <div>📝 <strong>Per message:</strong> ~500 tokens (~375 words)</div>
-                  <div>🔷 <strong>Pitch fee:</strong> 1 USDC on Base (on-chain)</div>
+                  <div>🔷 <strong>Pitch fee:</strong> 0.05 USDC on Base (~5 cents)</div>
                   <div>💰 <strong>If accepted:</strong> ${shark.stakedAmount.toLocaleString()} USDC to your wallet</div>
                 </div>
 
@@ -500,7 +500,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                   /* Step 3: paid → start pitch */
                   <div>
                     <div style={{ fontSize: 11, color: "green", marginBottom: 6, fontWeight: "bold" }}>
-                      ✓ 1 USDC paid on-chain
+                      ✓ 0.05 USDC paid on-chain
                       {payTxHash && (
                         <span style={{ fontSize: 9, color: "#888", fontFamily: "var(--font-pixel)", marginLeft: 6 }}>
                           tx: {payTxHash.slice(0, 10)}...
@@ -515,7 +515,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                     </div>
                   </div>
                 ) : (
-                  /* Step 2: pay 1 USDC on-chain */
+                  /* Step 2: pay 0.05 USDC on-chain */
                   <div>
                     {account && (
                       <div style={{ fontSize: 10, color: "#666", marginBottom: 8, fontFamily: "var(--font-pixel)" }}>
@@ -523,7 +523,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                       </div>
                     )}
                     <div style={{ fontSize: 11, color: "#444", marginBottom: 12, lineHeight: 1.5 }}>
-                      Pay <strong>1 USDC</strong> on Base to start your session.<br />
+                      Pay <strong>0.05 USDC</strong> (~5¢) on Base to start your session.<br />
                       <span style={{ fontSize: 10, color: "#888" }}>Make sure you have USDC on Base network.</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
@@ -550,7 +550,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                             cursor: "pointer",
                           }}
                         >
-                          Pay 1 USDC &amp; Pitch →
+                          Pay 0.05 USDC &amp; Pitch →
                         </TransactionButton>
                       ) : (
                         <button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }} onClick={() => setPitchPaid(true)}>
