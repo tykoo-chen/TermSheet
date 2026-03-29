@@ -302,34 +302,38 @@ export default function ConnectPage() {
                         </div>
                       ))}
                     </div>
-                    {account && client ? (
-                      depositPending ? (
-                        <div style={{ padding: 8, background: "#ffffcc", border: "1px solid #cc9", fontSize: 11, textAlign: "center" }}>
-                          ⏳ Verifying deposit on-chain...
-                        </div>
-                      ) : (
-                        <TransactionButton
-                          transaction={() => buildUsdcDeposit(selectedUsdc)}
-                          onTransactionConfirmed={(receipt) => handleUsdcConfirmed(receipt.transactionHash)}
-                          onError={(err) => {
-                            if (PLATFORM_WALLET === "0x0000000000000000000000000000000000000001") {
-                              // Dev mode: no real wallet, issue free token
-                              fetch("/api/deposit", { method: "POST", headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ txHash: "0x" + "0".repeat(64), walletAddress: account?.address }) })
-                                .then(r => r.json()).then(d => {
-                                  if (d.token) { setPitchToken(d.token); setTokenCredits(d.credits);
-                                    localStorage.setItem("termsheet-pitch-token", d.token); }
-                                }).catch(() => {});
-                            } else {
-                              console.error("USDC deposit failed:", err);
-                            }
-                          }}
-                          style={{ width: "100%", fontWeight: "bold", fontSize: 13, padding: "8px 0", cursor: "pointer",
-                            fontFamily: "inherit", background: "#ffff00", border: "2px outset #888" }}
-                        >
-                          Deposit ${selectedUsdc} USDC → Get {USDC_OPTIONS.find(o => o.usdc === selectedUsdc)?.credits} Credits →
-                        </TransactionButton>
-                      )
+                    {depositPending ? (
+                      <div style={{ padding: 8, background: "#ffffcc", border: "1px solid #cc9", fontSize: 11, textAlign: "center" }}>
+                        ⏳ Verifying deposit on-chain...
+                      </div>
+                    ) : PLATFORM_WALLET === "0x0000000000000000000000000000000000000001" ? (
+                      // Dev mode — plain button, no real on-chain tx required
+                      <button className="win95-btn"
+                        style={{ width: "100%", fontWeight: "bold", fontSize: 13, padding: "8px 0", cursor: "pointer",
+                          fontFamily: "inherit", background: "#ffff00" }}
+                        onClick={async () => {
+                          setDepositPending(true);
+                          try {
+                            const res = await fetch("/api/deposit", { method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ txHash: "0x" + "0".repeat(64), walletAddress: account?.address ?? "0xdev" }) });
+                            const d = await res.json();
+                            if (d.token) { setPitchToken(d.token); setTokenCredits(d.credits);
+                              localStorage.setItem("termsheet-pitch-token", d.token); }
+                            else alert(d.error || "Failed");
+                          } finally { setDepositPending(false); }
+                        }}>
+                        ⚡ Get {USDC_OPTIONS.find(o => o.usdc === selectedUsdc)?.credits} Test Credits (Dev Mode)
+                      </button>
+                    ) : account && client ? (
+                      <TransactionButton
+                        transaction={() => buildUsdcDeposit(selectedUsdc)}
+                        onTransactionConfirmed={(receipt) => handleUsdcConfirmed(receipt.transactionHash)}
+                        onError={(err) => console.error("USDC deposit failed:", err)}
+                        style={{ width: "100%", fontWeight: "bold", fontSize: 13, padding: "8px 0", cursor: "pointer",
+                          fontFamily: "inherit", background: "#ffff00", border: "2px outset #888" }}
+                      >
+                        Deposit ${selectedUsdc} USDC → Get {USDC_OPTIONS.find(o => o.usdc === selectedUsdc)?.credits} Credits →
+                      </TransactionButton>
                     ) : (
                       <div style={{ fontSize: 11, color: "#888", padding: 8, textAlign: "center" }}>
                         ↑ Connect wallet above to deposit USDC
