@@ -482,10 +482,12 @@ for (const sharkId of VCS) {
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, display: "flex", gap: 5, minHeight: 0 }}>
+          <div style={{ flex: 1, display: "flex", gap: 5, minHeight: 0, overflowX: "auto", overflowY: "hidden" }}>
             {vcStates.map((vc, i) => (
-              <VCWindow key={vc.sharkId} vc={vc} chatRef={(el) => { chatRefs.current[i] = el; }}
-                emptyLabel={`— agent starting in ${(i * 0.8).toFixed(1)}s —`} />
+              <div key={vc.sharkId} style={{ minWidth: 220, flex: "0 0 220px", display: "flex" }}>
+                <VCWindow vc={vc} chatRef={(el) => { chatRefs.current[i] = el; }}
+                  emptyLabel={`— agent starting in ${(i * 0.8).toFixed(1)}s —`} />
+              </div>
             ))}
           </div>
         )
@@ -609,10 +611,12 @@ for (const sharkId of VCS) {
           </div>
 
           {/* VC windows — live monitor */}
-          <div style={{ flex: 1, display: "flex", gap: 5, minHeight: 0 }}>
+          <div style={{ flex: 1, display: "flex", gap: 5, minHeight: 0, overflowX: "auto", overflowY: "hidden" }}>
             {extVCStates.map((vc, i) => (
-              <VCWindow key={vc.sharkId} vc={vc} chatRef={(el) => { extChatRefs.current[i] = el; }}
-                emptyLabel="— waiting for your agent —" agentLabel="YOUR AGENT" />
+              <div key={vc.sharkId} style={{ minWidth: 220, flex: "0 0 220px", display: "flex" }}>
+                <VCWindow vc={vc} chatRef={(el) => { extChatRefs.current[i] = el; }}
+                  emptyLabel="— waiting for your agent —" agentLabel="YOUR AGENT" />
+              </div>
             ))}
           </div>
         </div>

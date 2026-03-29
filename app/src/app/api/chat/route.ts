@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sharks } from "@/lib/mock-data";
 import { consumeCredit } from "@/lib/pitch-credits";
 import { paidPitchSessions } from "@/lib/paid-sessions";
+import { getGraph } from "@/agent/graph";
+import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import type { BaseMessage } from "@langchain/core/messages";
 
 // In-memory session store for approved pitches (MVP — use Redis in production)
 // sessionId → { sharkId, score, approvedAt }
@@ -255,9 +258,8 @@ export async function POST(req: NextRequest) {
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
+    if (!process.env.XAI_API_KEY && !process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "No LLM API key configured" }, { status: 500 });
     }
 
     const scoring = scoringConfigs[sharkId];
@@ -293,35 +295,30 @@ OUTPUT FORMAT — you must respond with valid JSON only, no other text:
   "reject_reason": "<one sentence if REJECT, otherwise null>"
 }`;
 
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "grok-3-mini-fast",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        temperature: 0.8,
-        max_tokens: 400,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Grok API error:", response.status, errText);
-      return NextResponse.json(
-        { error: `Grok API error: ${response.status}` },
-        { status: response.status }
-      );
+    // ── Build LangChain messages & invoke LangGraph agent ──────────────
+    const lcMessages: BaseMessage[] = [new SystemMessage(systemPrompt)];
+    for (const msg of messages) {
+      if (msg.role === "user") {
+        lcMessages.push(new HumanMessage(msg.content));
+      } else {
+        lcMessages.push(new AIMessage(msg.content));
+      }
     }
 
-    const data = await response.json();
-    const raw = data.choices?.[0]?.message?.content || "{}";
+    let raw: string;
+    try {
+      const graph = getGraph();
+      const result = await graph.invoke({ messages: lcMessages });
+      // Last message is the final AI response (after any tool calls)
+      const lastMsg = result.messages[result.messages.length - 1];
+      raw = typeof lastMsg.content === "string" ? lastMsg.content : JSON.stringify(lastMsg.content);
+    } catch (err) {
+      console.error("LangGraph agent error:", err);
+      return NextResponse.json(
+        { error: "AI agent error" },
+        { status: 500 }
+      );
+    }
 
     let parsed: { reply?: string; score?: number; decision?: string; reject_reason?: string };
     try {
