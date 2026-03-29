@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"  # "openai" or "xai"
     openai_api_key: str = ""
     xai_api_key: str = ""
+    exa_api_key: str = ""
 
     # Local dev (SQLite)
     database_url: str = "sqlite+aiosqlite:///./termsheet.db"

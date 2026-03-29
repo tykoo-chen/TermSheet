@@ -9,6 +9,8 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
 from app.core.config import get_settings
+from app.agent.web_tools import WEB_TOOLS
+from app.agent.pdf_tools import PDF_TOOLS
 
 # Investor-specific prompts
 from prompt.garry.system import SYSTEM_PROMPT as GARRY_PROMPT
@@ -39,10 +41,25 @@ You have two tools that represent final, irreversible decisions. Use them wisely
    Use when: you are genuinely convinced. Real traction, strong founder, huge market,
    and perfect timing. This is rare — you should pass on most pitches.
 
+WEB RESEARCH TOOLS:
+You can research in real time to verify claims, check competitors, and do due diligence.
+
+3. `search_web` — Search the web for information about companies, founders, markets,
+   technologies, or anything relevant. Use this to fact-check founder claims, research
+   the competitive landscape, or learn about a market before making your decision.
+
+4. `read_webpage` — Read the full content of a specific URL. Use this to dig deeper
+   into a search result, read a company's website, or check a founder's profile.
+
+5. `read_pdf` — Download and extract text from a PDF document. Use this when a founder
+   shares a pitch deck, financial report, term sheet, or any PDF link. Parse it to
+   understand the details before making your decision.
+
 RULES:
 - You MUST make a decision (pass or invest) before the conversation ends.
-- Do NOT call these tools on the first exchange. Ask at least 2-3 probing questions first.
-- When you call a tool, also include your spoken response explaining your decision.
+- Do NOT call deal decision tools on the first exchange. Ask at least 2-3 probing questions first.
+- Use web research tools proactively to verify claims and do due diligence.
+- When you call a deal decision tool, also include your spoken response explaining your decision.
 - Be intense. Push founders hard. The best founders push back.
 """
 
@@ -64,6 +81,7 @@ def invest_deal(reason: str) -> str:
 
 
 DEAL_TOOLS = [pass_deal, invest_deal]
+ALL_TOOLS = DEAL_TOOLS + WEB_TOOLS + PDF_TOOLS
 
 
 class AgentState(TypedDict):
@@ -101,8 +119,8 @@ def get_system_prompt(shark_id: str) -> str:
 
 def create_graph():
     llm = _build_llm()
-    llm_with_tools = llm.bind_tools(DEAL_TOOLS)
-    tool_node = ToolNode(DEAL_TOOLS)
+    llm_with_tools = llm.bind_tools(ALL_TOOLS)
+    tool_node = ToolNode(ALL_TOOLS)
 
     def chatbot(state: AgentState) -> AgentState:
         response = llm_with_tools.invoke(state["messages"])
