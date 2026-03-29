@@ -65,7 +65,7 @@ Wallet:    ${wallet}
 For round 2+, append the VC's reply to messages before sending the next round.
 
 ## Task
-Please pitch my startup to all 13 VCs simultaneously by making POST requests to the endpoint above.
+Please pitch my startup to all VCs simultaneously by making POST requests to the endpoint above.
 Keep pitching each VC until their response includes "decision": "ACCEPT" or "decision": "REJECT" (takes 3–5 rounds).
 Each message should be under 400 words and tailored to that VC's focus.
 
@@ -226,7 +226,7 @@ export default function ConnectPage() {
             <strong>1.</strong> Connect wallet (for USDC payouts) &nbsp;→&nbsp;
             <strong>2.</strong> Pre-fund with USDC or card &nbsp;→&nbsp;
             <strong>3.</strong> Get a <code style={{ background: "#ddd", padding: "0 3px" }}>PITCH_TOKEN</code> &nbsp;→&nbsp;
-            <strong>4.</strong> Your agent pitches 13 VCs with one header.<br />
+            <strong>4.</strong> Your agent pitches all VCs with one header.<br />
             When a VC accepts → USDC goes to your wallet automatically. <strong>No per-pitch payment friction.</strong>
           </div>
 

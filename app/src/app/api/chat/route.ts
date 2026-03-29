@@ -234,10 +234,12 @@ export async function POST(req: NextRequest) {
     // ── Payment gate ────────────────────────────────────────────────────────
     const pitchToken = req.headers.get("x-pitch-token");
     const arenaPrepaid = req.headers.get("x-arena-prepaid") === "1";
+    const arenaMode = req.headers.get("x-arena-mode") === "1";
 
-    if (pitchToken && arenaPrepaid) {
-      // Arena builtin agent: credits were deducted upfront via /api/deduct-credits
-      // Just verify token is still valid — don't deduct per call
+    if (arenaMode) {
+      // Arena builtin agent — always allowed (payment gate is UI-level only)
+    } else if (pitchToken && arenaPrepaid) {
+      // Arena with prepaid credits — just verify token is valid, don't deduct per call
       const account = getAccount(pitchToken);
       if (!account || account.status !== "active") {
         return NextResponse.json({ error: "Invalid pitch token" }, { status: 402 });
@@ -254,7 +256,6 @@ export async function POST(req: NextRequest) {
     } else if (!process.env.STRIPE_SECRET_KEY) {
       // Dev mode: no payment configured — allow freely
     } else {
-      // No token and Stripe is configured — require payment
       const paidSession = sessionId ? paidPitchSessions.get(sessionId) : null;
       if (!paidSession) {
         return NextResponse.json(

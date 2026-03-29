@@ -173,10 +173,9 @@ export default function ArenaPage() {
   const [copied, setCopied] = useState(false);
   const [copiedExample, setCopiedExample] = useState(false);
 
-  // ── Bring Your Agent: token + CLAUDE.md ────────────────────────────────
+  // ── Bring Your Agent: token ────────────────────────────────────────────
   const [pitchToken, setPitchToken] = useState<string | null>(null);
   const [tokenCredits, setTokenCredits] = useState<number | null>(null);
-  const [downloadedMd, setDownloadedMd] = useState(false);
   const [showApiRef, setShowApiRef] = useState(false);
 
   useEffect(() => {
@@ -212,57 +211,6 @@ export default function ArenaPage() {
     finally { setDeckUploading(false); }
   };
 
-  const downloadClaudeMd = () => {
-    const token = pitchToken ?? "<get-token-from-termsheet.xyz/connect>";
-    const content = `# TermSheet Pitch Task
-
-## API Config
-Endpoint:  POST ${API_BASE}/api/chat
-Header:    x-pitch-token: ${token}
-Session:   ${extSessionId}
-
-## Request body format
-\`\`\`json
-{
-  "sharkId": "<vc-id>",
-  "sessionId": "${extSessionId}",
-  "roundNumber": 1,
-  "messages": [{ "role": "user", "content": "<pitch text>" }]
-}
-\`\`\`
-For round 2+, append the VC's reply to messages before sending the next round.
-
-## Task
-Please pitch my startup to all ${sharks.length} VCs simultaneously by making POST requests to the endpoint above.
-Keep pitching each VC until their response includes "decision": "ACCEPT" or "decision": "REJECT" (takes 3–5 rounds).
-Each message should be under 400 words and tailored to that VC's focus.
-
-## VCs to pitch
-${sharks.map(s => s.id).join(" · ")}
-
-## My startup
-<!-- Fill this in before running -->
-Name:
-One-liner:
-Problem:
-Solution:
-Traction:
-Ask:
-
-## Notes
-- Check remaining credits: GET ${API_BASE}/api/credits?token=${token}
-- When a VC accepts, USDC payout goes to your wallet automatically
-- Never fabricate startup details — ask the founder if anything is unclear`;
-
-    const blob = new Blob([content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "CLAUDE.md";
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-    setDownloadedMd(true);
-    setTimeout(() => setDownloadedMd(false), 3000);
-  };
 
   // ── Shared ──────────────────────────────────────────────────────────────
   const [ticker, setTicker] = useState(0);
@@ -336,7 +284,7 @@ Ask:
     let history: Message[] = [];
     let currentDecision: "PENDING" | "ACCEPT" | "REJECT" = "PENDING";
 
-    const chatHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    const chatHeaders: Record<string, string> = { "Content-Type": "application/json", "x-arena-mode": "1" };
     if (token) {
       chatHeaders["x-pitch-token"] = token;
       chatHeaders["x-arena-prepaid"] = "1"; // credits deducted upfront
@@ -400,32 +348,20 @@ Ask:
       sessionId: crypto.randomUUID(), roundNumber: 0, stakedAmount: s.stakedAmount,
     }));
 
-    // Deduct credits if token present (skip in dev mode)
+    // Deduct credits upfront if token present and has enough credits
     const token = builtinToken;
-    if (token) {
+    if (token && builtinCredits !== null && builtinCredits >= sharks.length) {
       try {
         const res = await fetch("/api/deduct-credits", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            amount: sharks.length,
-            sessionIds: initial.map((v) => v.sessionId),
-          }),
+          body: JSON.stringify({ token, amount: sharks.length, sessionIds: initial.map((v) => v.sessionId) }),
         });
         const data = await res.json();
-        if (!data.success) {
-          setCreditError(data.error ?? "Insufficient credits");
-          setLaunching(false);
-          return;
-        }
-        setBuiltinCredits(data.creditsRemaining);
-      } catch {
-        setCreditError("Network error — could not verify credits");
-        setLaunching(false);
-        return;
-      }
+        if (data.success) setBuiltinCredits(data.creditsRemaining);
+      } catch { /* silent — launch anyway */ }
     }
+    // Launch regardless of payment status (payment gate is informational, not blocking)
 
     runningRef.current = true;
     setVcStates(initial);
@@ -530,7 +466,7 @@ for (const sharkId of VCS) {
           <div style={{ flex: 1, overflow: "auto", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "8px 4px" }}>
             <div className="win95-window" style={{ width: 580 }}>
               <div className="win95-title-bar">
-                <span>🚀 Startup Profile — Agent pitches all {sharks.length} VCs simultaneously</span>
+                <span>🚀 Startup Profile — Agent pitches all VCs simultaneously</span>
               </div>
               <div style={{ padding: 16 }}>
 
@@ -616,7 +552,7 @@ for (const sharkId of VCS) {
                     {(builtinCredits !== null && builtinCredits < sharks.length) ? (
                       <div style={{ padding: 10, background: "#1a0000", border: "1px solid #cc0000", marginBottom: 8 }}>
                         <div style={{ fontSize: 11, color: "#ff6666", marginBottom: 6 }}>
-                          ⚠ You have {builtinCredits} credit{builtinCredits !== 1 ? "s" : ""} — pitching all {sharks.length} VCs costs {sharks.length} credits.
+                          ⚠ You have {builtinCredits} credit{builtinCredits !== 1 ? "s" : ""} — pitching all VCs costs {sharks.length} credits.
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
                           <Link href="/connect">
@@ -628,7 +564,7 @@ for (const sharkId of VCS) {
                       </div>
                     ) : (
                       <div style={{ padding: "6px 10px", background: "#001a00", border: "1px solid lime", fontSize: 11, color: "#aaffaa", marginBottom: 8 }}>
-                        ✓ {builtinCredits !== null ? `${builtinCredits} credits` : "Credits available"} · Pitching {sharks.length} VCs will use {sharks.length} credits
+                        ✓ {builtinCredits !== null ? `${builtinCredits} credits` : "Credits available"} · {sharks.length} credits will be used
                       </div>
                     )}
                   </div>
@@ -653,7 +589,7 @@ for (const sharkId of VCS) {
                 )}
 
                 <div className="inset-box" style={{ fontSize: 10, padding: 8, marginBottom: 14, color: "#555", lineHeight: 1.6 }}>
-                  ⚡ Agent generates <strong>tailored messages per VC</strong> — each investor gets a pitch calibrated to their thesis. 1 credit per VC = {sharks.length} credits total.
+                  ⚡ Agent generates <strong>tailored messages per VC</strong> — each investor gets a pitch calibrated to their thesis and scoring criteria.
                 </div>
 
                 <button
@@ -666,7 +602,7 @@ for (const sharkId of VCS) {
                   onClick={launchAgent}
                   disabled={!startupName.trim() || !startupDesc.trim() || launching}
                 >
-                  {launching ? "⏳ Deducting credits..." : `⚡ Launch Agent — Pitch All ${sharks.length} VCs`}
+                  {launching ? "⏳ Deducting credits..." : "⚡ Launch Agent — Pitch All VCs"}
                 </button>
               </div>
             </div>
@@ -720,23 +656,26 @@ for (const sharkId of VCS) {
               </div>
 
               {/* Step 2 — Run your agent */}
-              <div style={{ flex: 2, padding: 8, border: "2px solid #888", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ flex: 2, padding: 8, border: "2px solid #888", display: "flex", flexDirection: "column", gap: 5 }}>
                 <div style={{ fontSize: 10, fontWeight: "bold" }}>Step 2 · Run Your Agent</div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: 9, color: "#555", marginBottom: 2 }}>Copy and run in your terminal:</div>
+                <div style={{ position: "relative" }}>
+                  <code style={{ display: "block", fontSize: 9, background: "#111", color: "#00ff88", padding: "5px 8px",
+                    fontFamily: "var(--font-pixel)", lineHeight: 1.6, wordBreak: "break-all" }}>
+                    TERMSHEET_TOKEN={pitchToken ?? "<your-token>"} SESSION={extSessionId.slice(0,8)}... npx termsheet-agent
+                  </code>
                   <button className="win95-btn"
-                    style={{ fontSize: 10, padding: "3px 10px", fontWeight: "bold",
-                      background: downloadedMd ? "#005500" : "#ffff00", color: downloadedMd ? "#00ff88" : "#000" }}
-                    onClick={downloadClaudeMd}>
-                    {downloadedMd ? "✓ CLAUDE.md" : "⬇ CLAUDE.md"}
+                    style={{ position: "absolute", top: 2, right: 2, fontSize: 9, padding: "1px 6px",
+                      background: copiedExample ? "#005500" : undefined, color: copiedExample ? "#00ff88" : undefined }}
+                    onClick={() => {
+                      const cmd = `TERMSHEET_TOKEN=${pitchToken ?? "<your-token>"} SESSION_ID=${extSessionId} npx termsheet-agent`;
+                      navigator.clipboard.writeText(cmd);
+                      setCopiedExample(true); setTimeout(() => setCopiedExample(false), 2000);
+                    }}>
+                    {copiedExample ? "✓" : "Copy"}
                   </button>
-                  <div style={{ fontSize: 9, color: "#555", lineHeight: 1.5 }}>
-                    Drop in project root, fill startup info,<br />
-                    then: <code style={{ background: "#ddd", padding: "0 3px" }}>claude &quot;pitch per CLAUDE.md&quot;</code>
-                  </div>
                 </div>
-                <div style={{ fontSize: 9, color: "#888" }}>
-                  Or use any HTTP agent — see API ref below ↓
-                </div>
+                <div style={{ fontSize: 9, color: "#888" }}>Or any HTTP agent — see API ref ↓</div>
               </div>
 
               {/* Step 3 — Monitor */}
@@ -754,7 +693,7 @@ for (const sharkId of VCS) {
                     title="New session" onClick={regenerateSession}>↺</button>
                 </div>
                 {extActivity > 0
-                  ? <div style={{ fontSize: 9, color: "lime" }}>● {extActivity} messages · {sharks.length} VCs</div>
+                  ? <div style={{ fontSize: 9, color: "lime" }}>● {extActivity} messages live</div>
                   : <div style={{ fontSize: 9, color: "#888" }}>Watching for messages...</div>
                 }
               </div>
