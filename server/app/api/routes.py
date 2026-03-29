@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage, ToolMessage
 from sqlalchemy import select, func
@@ -247,6 +247,80 @@ async def get_session_messages(
         MessageOut(role=msg.role.value, content=msg.content)
         for msg in messages
     ]
+
+
+# ── Video Upload + Transcription ──────────────────────────────────────────
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+
+@router.post("/session/{session_id}/upload-video")
+async def upload_video(
+    session_id: str,
+    file: UploadFile,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a video/audio file, transcribe it, and inject the transcript as a user message."""
+    from app.services.transcribe import transcribe_file, ALLOWED_EXTENSIONS
+    from pathlib import Path
+
+    user_id = user["sub"]
+
+    # Validate session
+    stmt = select(Session).where(
+        Session.id == uuid.UUID(session_id),
+        Session.user_id == uuid.UUID(user_id),
+    )
+    result = await db.execute(stmt)
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if session.status != SessionStatus.IN_PROGRESS:
+        raise HTTPException(status_code=429, detail="Session ended.")
+    if _session_expired(session):
+        session.status = SessionStatus.PENDING
+        await db.commit()
+        raise HTTPException(status_code=429, detail="Session time expired.")
+
+    # Validate file type
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # Read file with size check
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 100 MB).")
+
+    # Transcribe
+    try:
+        result = await transcribe_file(file_bytes, file.filename or "video.mp4")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
+    transcript = result["transcript"]
+    duration = result["duration_seconds"]
+
+    # Store transcript as a user message
+    content = f"[VIDEO TRANSCRIPT] ({file.filename}, {duration:.0f}s):\n{transcript}"
+    db.add(
+        Message(
+            session_id=session.id,
+            role=MessageRole.USER,
+            content=content,
+        )
+    )
+    await db.commit()
+
+    return {
+        "transcript": transcript,
+        "duration_seconds": duration,
+        "message_content": content,
+    }
 
 
 # ── Chat ────────────────────────────────────────────────────────────────────

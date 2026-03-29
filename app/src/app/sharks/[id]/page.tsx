@@ -48,6 +48,10 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   // Deal outcome: null | "invest" | "pass"
   const [dealOutcome, setDealOutcome] = useState<string | null>(null);
 
+  // File upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -253,68 +257,76 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
     }
   };
 
-  const handleFileDrop = async () => {
-    if (sessionEnded) return;
-    const fileName = "pitch_deck_v3.pdf";
-    const userMsg: Message = { role: "user", content: `📎 Attached: ${fileName}`, attachments: [fileName] };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    setLoading(true);
-    setRoundsUsed((r) => r + 1);
-    setInput("");
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || sessionEnded || !sessionId) return;
+    e.target.value = ""; // reset input
+
+    setUploading(true);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: `📎 Uploading: ${file.name}...` },
+    ]);
+
     try {
-      const apiMessages = newMessages.map((m) => ({
-        role: m.role === "user" ? "user" as const : "assistant" as const,
-        content: m.content,
-      }));
-      const res = await authFetch(`/api/chat/stream`, {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await authFetch(`/api/session/${sessionId}/upload-video`, {
         method: "POST",
-        body: JSON.stringify({
-          shark_id: shark.id,
-          session_id: sessionId,
-          messages: apiMessages,
-        }),
+        body: formData,
       });
-      if (res.status === 429) {
-        setSessionEnded(true);
-        clearInterval(timerRef.current!);
-        setLoading(false);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+        setMessages((prev) => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.content.startsWith("📎 Uploading:")) {
+            updated[updated.length - 1] = {
+              ...last,
+              content: `📎 Upload failed: ${err.detail || "Unknown error"}`,
+            };
+          }
+          return updated;
+        });
+        setUploading(false);
         return;
       }
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      if (reader) {
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.token) {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last && last.role === "assistant") {
-                    updated[updated.length - 1] = { ...last, content: last.content + data.token };
-                  }
-                  return updated;
-                });
-              }
-              if (data.done && data.session_id) setSessionId(data.session_id);
-            } catch { /* skip */ }
-          }
+
+      const data = await res.json();
+      const duration = Math.round(data.duration_seconds || 0);
+
+      // Replace uploading message with transcript preview
+      setMessages((prev) => {
+        const updated = [...prev];
+        const idx = updated.findLastIndex((m) => m.content.startsWith("📎 Uploading:"));
+        if (idx >= 0) {
+          const preview = data.transcript.length > 200
+            ? data.transcript.slice(0, 200) + "..."
+            : data.transcript;
+          updated[idx] = {
+            role: "user",
+            content: `📎 ${file.name} (${duration}s) — transcribed:\n${preview}`,
+            attachments: [file.name],
+          };
         }
-      }
+        return updated;
+      });
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "File received. Continue your pitch." }]);
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last?.content.startsWith("📎 Uploading:")) {
+          updated[updated.length - 1] = {
+            ...last,
+            content: "📎 Upload failed: connection error.",
+          };
+        }
+        return updated;
+      });
     }
-    setLoading(false);
+    setUploading(false);
   };
 
   // --- Blocked: already pitched this week ---
@@ -564,13 +576,21 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
               {!sessionEnded ? (
                 <div style={{ padding: 4, display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ display: "flex", gap: 4, alignItems: "flex-end" }}>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/*,audio/*,.mp4,.mov,.webm,.m4a,.mp3,.wav,.ogg"
+                      style={{ display: "none" }}
+                      onChange={handleFileUpload}
+                    />
                     <button
                       className="win95-btn"
                       style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
-                      onClick={handleFileDrop}
-                      title="Attach a file"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading || loading || sessionEnded}
+                      title="Upload video/audio for transcription"
                     >
-                      📎
+                      {uploading ? "⏳" : "📎"}
                     </button>
                     <textarea
                       className="inset-input"

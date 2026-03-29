@@ -21,4 +21,6 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0.48",
     "uvicorn>=0.42.0",
+    "python-multipart>=0.0.22",
+    "openai>=2.30.0",
 ]
