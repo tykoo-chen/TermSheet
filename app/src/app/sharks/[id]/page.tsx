@@ -272,7 +272,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await authFetch(`/api/session/${sessionId}/upload-video`, {
+      const res = await authFetch(`/api/session/${sessionId}/upload`, {
         method: "POST",
         body: formData,
       });
@@ -295,19 +295,24 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
       }
 
       const data = await res.json();
-      const duration = Math.round(data.duration_seconds || 0);
 
-      // Replace uploading message with transcript preview
+      // Replace uploading message with extracted content preview
       setMessages((prev) => {
         const updated = [...prev];
         const idx = updated.findLastIndex((m) => m.content.startsWith("📎 Uploading:"));
         if (idx >= 0) {
-          const preview = data.transcript.length > 200
-            ? data.transcript.slice(0, 200) + "..."
-            : data.transcript;
+          let summary: string;
+          if (data.type === "pdf") {
+            const preview = data.text.length > 200 ? data.text.slice(0, 200) + "..." : data.text;
+            summary = `📄 ${file.name} (${data.pages} pages):\n${preview}`;
+          } else {
+            const duration = Math.round(data.duration_seconds || 0);
+            const preview = data.transcript.length > 200 ? data.transcript.slice(0, 200) + "..." : data.transcript;
+            summary = `🎥 ${file.name} (${duration}s) — transcribed:\n${preview}`;
+          }
           updated[idx] = {
             role: "user",
-            content: `📎 ${file.name} (${duration}s) — transcribed:\n${preview}`,
+            content: summary,
             attachments: [file.name],
           };
         }
@@ -579,7 +584,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="video/*,audio/*,.mp4,.mov,.webm,.m4a,.mp3,.wav,.ogg"
+                      accept="video/*,audio/*,.mp4,.mov,.webm,.m4a,.mp3,.wav,.ogg,.pdf,application/pdf"
                       style={{ display: "none" }}
                       onChange={handleFileUpload}
                     />
@@ -588,7 +593,7 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
                       style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading || loading || sessionEnded}
-                      title="Upload video/audio for transcription"
+                      title="Upload pitch deck (PDF) or video/audio"
                     >
                       {uploading ? "⏳" : "📎"}
                     </button>

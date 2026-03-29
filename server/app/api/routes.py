@@ -249,18 +249,23 @@ async def get_session_messages(
     ]
 
 
-# ── Video Upload + Transcription ──────────────────────────────────────────
+# ── File Upload (video/audio/PDF) ─────────────────────────────────────────
 MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
+AUDIO_VIDEO_EXTS = {".mp4", ".mov", ".webm", ".m4a", ".mp3", ".wav", ".ogg", ".mpeg"}
+PDF_EXTS = {".pdf"}
+ALL_UPLOAD_EXTS = AUDIO_VIDEO_EXTS | PDF_EXTS
 
-@router.post("/session/{session_id}/upload-video")
-async def upload_video(
+@router.post("/session/{session_id}/upload")
+async def upload_file(
     session_id: str,
     file: UploadFile,
     user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Upload a video/audio file, transcribe it, and inject the transcript as a user message."""
-    from app.services.transcribe import transcribe_file, ALLOWED_EXTENSIONS
+    """Upload a file, extract text content, and inject as a user message.
+
+    Supported: video/audio (transcribed via Whisper) and PDF (text extracted via PyMuPDF).
+    """
     from pathlib import Path
 
     user_id = user["sub"]
@@ -283,10 +288,10 @@ async def upload_video(
 
     # Validate file type
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in ALLOWED_EXTENSIONS:
+    if suffix not in ALL_UPLOAD_EXTS:
         raise HTTPException(
             status_code=422,
-            detail=f"Unsupported file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALL_UPLOAD_EXTS))}",
         )
 
     # Read file with size check
@@ -294,33 +299,48 @@ async def upload_video(
     if len(file_bytes) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail="File too large (max 100 MB).")
 
-    # Transcribe
-    try:
-        result = await transcribe_file(file_bytes, file.filename or "video.mp4")
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+    filename = file.filename or "file"
 
-    transcript = result["transcript"]
-    duration = result["duration_seconds"]
+    # Route by file type
+    if suffix in PDF_EXTS:
+        from app.services.extract import extract_pdf
+        try:
+            text, pages = extract_pdf(file_bytes)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"PDF extraction failed: {e}")
 
-    # Store transcript as a user message
-    content = f"[VIDEO TRANSCRIPT] ({file.filename}, {duration:.0f}s):\n{transcript}"
-    db.add(
-        Message(
-            session_id=session.id,
-            role=MessageRole.USER,
-            content=content,
-        )
-    )
-    await db.commit()
+        content = f"[PITCH DECK] ({filename}, {pages} pages):\n{text}"
+        db.add(Message(session_id=session.id, role=MessageRole.USER, content=content))
+        await db.commit()
 
-    return {
-        "transcript": transcript,
-        "duration_seconds": duration,
-        "message_content": content,
-    }
+        return {
+            "type": "pdf",
+            "text": text,
+            "pages": pages,
+            "message_content": content,
+        }
+
+    else:
+        from app.services.transcribe import transcribe_file
+        try:
+            result = await transcribe_file(file_bytes, filename)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
+        transcript = result["transcript"]
+        duration = result["duration_seconds"]
+        content = f"[VIDEO TRANSCRIPT] ({filename}, {duration:.0f}s):\n{transcript}"
+        db.add(Message(session_id=session.id, role=MessageRole.USER, content=content))
+        await db.commit()
+
+        return {
+            "type": "video",
+            "transcript": transcript,
+            "duration_seconds": duration,
+            "message_content": content,
+        }
 
 
 # ── Chat ────────────────────────────────────────────────────────────────────
