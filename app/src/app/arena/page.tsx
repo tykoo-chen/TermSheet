@@ -518,13 +518,16 @@ for (const sharkId of VCS) {
                   </div>
                 </div>
 
-                {/* ── Section: Pitch Deck ── */}
+                {/* ── Section: Pitch Deck / Images ── */}
                 <div style={{ fontWeight: "bold", fontSize: 11, borderBottom: "1px solid #aaa", marginBottom: 10, paddingBottom: 3, letterSpacing: 1 }}>
-                  PITCH DECK <span style={{ fontWeight: "normal", color: "#888" }}>(optional — PDF)</span>
+                  PITCH DECK / IMAGES <span style={{ fontWeight: "normal", color: "#888" }}>(optional — PDF, PNG, JPG, GIF, WebP)</span>
                 </div>
                 <div style={{ marginBottom: 14 }}>
                   {deckName ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "#001a00", border: "1px solid lime" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "#001a00", border: "1px solid lime", flexWrap: "wrap" }}>
+                      {deckUrl && /\.(png|jpe?g|gif|webp|svg)$/i.test(deckName) && (
+                        <img src={deckUrl} alt={deckName} style={{ height: 48, objectFit: "contain", border: "1px solid #333" }} />
+                      )}
                       <span style={{ color: "lime", fontSize: 11 }}>✓ {deckName}</span>
                       {deckUrl && <a href={deckUrl} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#00ff88" }}>view ↗</a>}
                       <button className="win95-btn" style={{ fontSize: 10, padding: "1px 8px", marginLeft: "auto" }}
@@ -532,13 +535,13 @@ for (const sharkId of VCS) {
                     </div>
                   ) : (
                     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                      <input type="file" accept="application/pdf" style={{ display: "none" }}
+                      <input type="file" accept="application/pdf,image/png,image/jpeg,image/gif,image/webp,image/svg+xml" style={{ display: "none" }}
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDeckUpload(f); }} />
                       <button className="win95-btn" style={{ fontSize: 11, padding: "3px 12px" }}
                         onClick={(e) => { e.preventDefault(); (e.currentTarget.parentElement?.querySelector("input[type=file]") as HTMLElement)?.click(); }}>
-                        {deckUploading ? "Uploading..." : "📎 Upload PDF"}
+                        {deckUploading ? "Uploading..." : "📎 Upload PDF / Image"}
                       </button>
-                      <span style={{ fontSize: 10, color: "#888" }}>Agent will reference deck in pitches · max 20MB</span>
+                      <span style={{ fontSize: 10, color: "#888" }}>Agent will reference this in pitches · max 20MB</span>
                     </label>
                   )}
                 </div>

@@ -8,8 +8,13 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
-    if (file.type !== "application/pdf") {
-      return NextResponse.json({ error: "Only PDF files are accepted" }, { status: 400 });
+    const ALLOWED = [
+      "application/pdf",
+      "image/png", "image/jpeg", "image/jpg", "image/gif",
+      "image/webp", "image/svg+xml",
+    ];
+    if (!ALLOWED.includes(file.type)) {
+      return NextResponse.json({ error: "Only PDF and image files (PNG, JPG, GIF, WebP) are accepted" }, { status: 400 });
     }
     if (file.size > 20 * 1024 * 1024) {
       return NextResponse.json({ error: "File too large (max 20MB)" }, { status: 400 });
@@ -20,7 +25,7 @@ export async function POST(req: NextRequest) {
       const { put } = await import("@vercel/blob");
       const blob = await put(`decks/${Date.now()}-${file.name}`, file, {
         access: "public",
-        contentType: "application/pdf",
+        contentType: file.type,
       });
       return NextResponse.json({ url: blob.url, name: file.name, size: file.size });
     }
