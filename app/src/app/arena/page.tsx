@@ -159,6 +159,75 @@ export default function ArenaPage() {
   const [copied, setCopied] = useState(false);
   const [copiedExample, setCopiedExample] = useState(false);
 
+  // ── Bring Your Agent: token + CLAUDE.md ────────────────────────────────
+  const [pitchToken, setPitchToken] = useState<string | null>(null);
+  const [tokenCredits, setTokenCredits] = useState<number | null>(null);
+  const [downloadedMd, setDownloadedMd] = useState(false);
+  const [showApiRef, setShowApiRef] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("termsheet-pitch-token");
+    if (stored) {
+      setPitchToken(stored);
+      fetch(`/api/credits?token=${stored}`)
+        .then((r) => r.json())
+        .then((d) => { if (d.credits !== undefined) setTokenCredits(d.credits); })
+        .catch(() => {});
+    }
+  }, []);
+
+  const downloadClaudeMd = () => {
+    const token = pitchToken ?? "<get-token-from-termsheet.xyz/connect>";
+    const content = `# TermSheet Pitch Task
+
+## API Config
+Endpoint:  POST ${API_BASE}/api/chat
+Header:    x-pitch-token: ${token}
+Session:   ${extSessionId}
+
+## Request body format
+\`\`\`json
+{
+  "sharkId": "<vc-id>",
+  "sessionId": "${extSessionId}",
+  "roundNumber": 1,
+  "messages": [{ "role": "user", "content": "<pitch text>" }]
+}
+\`\`\`
+For round 2+, append the VC's reply to messages before sending the next round.
+
+## Task
+Please pitch my startup to all ${sharks.length} VCs simultaneously by making POST requests to the endpoint above.
+Keep pitching each VC until their response includes "decision": "ACCEPT" or "decision": "REJECT" (takes 3–5 rounds).
+Each message should be under 400 words and tailored to that VC's focus.
+
+## VCs to pitch
+${sharks.map(s => s.id).join(" · ")}
+
+## My startup
+<!-- Fill this in before running -->
+Name:
+One-liner:
+Problem:
+Solution:
+Traction:
+Ask:
+
+## Notes
+- Check remaining credits: GET ${API_BASE}/api/credits?token=${token}
+- When a VC accepts, USDC payout goes to your wallet automatically
+- Never fabricate startup details — ask the founder if anything is unclear`;
+
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "CLAUDE.md";
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    setDownloadedMd(true);
+    setTimeout(() => setDownloadedMd(false), 3000);
+  };
+
   // ── Shared ──────────────────────────────────────────────────────────────
   const [ticker, setTicker] = useState(0);
   const [tickerVisible, setTickerVisible] = useState(true);
@@ -426,66 +495,120 @@ for (const sharkId of VCS) {
       {mode === "external" && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5, minHeight: 0 }}>
 
-          {/* Config panel */}
+          {/* 3-step setup bar */}
           <div className="win95-window" style={{ flexShrink: 0 }}>
-            <div className="win95-title-bar"><span>🔌 Webhook Config — paste into your agent</span></div>
-            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="win95-title-bar"><span>🔌 Bring Your Agent — {pitchToken ? "ready to pitch" : "3 steps to go live"}</span></div>
+            <div style={{ padding: 10, display: "flex", gap: 8, alignItems: "stretch" }}>
 
-              {/* Session ID */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                <span style={{ fontWeight: "bold", flexShrink: 0 }}>Session ID:</span>
-                <code style={{ background: "#eee", padding: "2px 6px", fontFamily: "var(--font-pixel)", fontSize: 11, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {extSessionId}
-                </code>
-                <button className="win95-btn" style={{ fontSize: 10, padding: "1px 8px", flexShrink: 0 }} onClick={regenerateSession}>
-                  Regenerate
-                </button>
+              {/* Step 1 — Token */}
+              <div style={{ flex: 1, padding: 8, border: pitchToken ? "2px solid lime" : "2px solid #888",
+                background: pitchToken ? "#001a00" : "#eee", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: "bold", color: pitchToken ? "lime" : "#000" }}>
+                  {pitchToken ? "✓ Step 1" : "Step 1"} · Credits
+                </div>
+                {pitchToken ? (
+                  <div>
+                    <div style={{ fontSize: 10, color: "#aaffaa" }}>
+                      {tokenCredits !== null ? `${tokenCredits} credit${tokenCredits !== 1 ? "s" : ""} remaining` : "Token active"}
+                    </div>
+                    <code style={{ fontSize: 9, color: "#00ff88", wordBreak: "break-all", fontFamily: "var(--font-pixel)" }}>
+                      {pitchToken.slice(0, 20)}...
+                    </code>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{ fontSize: 10, color: "#555" }}>Get a pitch token to start</div>
+                    <Link href="/connect">
+                      <button className="win95-btn" style={{ fontSize: 10, padding: "3px 10px", background: "#ffff00", fontWeight: "bold" }}>
+                        Get Credits →
+                      </button>
+                    </Link>
+                  </div>
+                )}
               </div>
 
-              {/* Webhook URL */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-                <span style={{ fontWeight: "bold", flexShrink: 0 }}>Webhook:</span>
-                <code style={{ background: "#000", color: "#00ff88", padding: "2px 8px", fontFamily: "var(--font-pixel)", fontSize: 11, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "1px inset #555" }}>
-                  POST {webhookUrl}
-                </code>
-                <button
-                  className="win95-btn"
-                  style={{ fontSize: 10, padding: "1px 10px", flexShrink: 0, background: copied ? "#00aa00" : undefined, color: copied ? "white" : undefined }}
-                  onClick={() => { navigator.clipboard.writeText(webhookUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-                >
-                  {copied ? "✓" : "Copy URL"}
-                </button>
-              </div>
-
-              {/* Example code */}
-              <div style={{ position: "relative" }}>
-                <pre style={{ background: "#111", color: "#aaffaa", fontSize: 10, padding: 8, margin: 0, border: "1px inset #555", overflowX: "auto", lineHeight: 1.5, fontFamily: "var(--font-pixel)" }}>
-                  {examplePayload}
-                </pre>
-                <button
-                  className="win95-btn"
-                  style={{ position: "absolute", top: 4, right: 4, fontSize: 10, padding: "1px 8px", background: copiedExample ? "#00aa00" : undefined, color: copiedExample ? "white" : undefined }}
-                  onClick={() => { navigator.clipboard.writeText(examplePayload); setCopiedExample(true); setTimeout(() => setCopiedExample(false), 2000); }}
-                >
-                  {copiedExample ? "✓ Copied" : "Copy"}
-                </button>
-              </div>
-
-              <div style={{ fontSize: 10, color: "#666", lineHeight: 1.6, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <span>
-                  Your agent sends messages → VC responds in real-time → results appear below.
-                  Keep calling until <code style={{ background: "#eee", padding: "0 2px" }}>decision</code> is <code style={{ background: "#eee", padding: "0 2px" }}>ACCEPT</code> or <code style={{ background: "#eee", padding: "0 2px" }}>REJECT</code>.
-                </span>
-                <Link href="/connect">
-                  <button className="win95-btn" style={{ fontSize: 10, padding: "2px 10px", fontWeight: "bold", background: "#ffff00", whiteSpace: "nowrap" }}>
-                    Get API Token →
+              {/* Step 2 — Run your agent */}
+              <div style={{ flex: 2, padding: 8, border: "2px solid #888", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 10, fontWeight: "bold" }}>Step 2 · Run Your Agent</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <button className="win95-btn"
+                    style={{ fontSize: 10, padding: "3px 10px", fontWeight: "bold",
+                      background: downloadedMd ? "#005500" : "#ffff00", color: downloadedMd ? "#00ff88" : "#000" }}
+                    onClick={downloadClaudeMd}>
+                    {downloadedMd ? "✓ CLAUDE.md" : "⬇ CLAUDE.md"}
                   </button>
-                </Link>
+                  <div style={{ fontSize: 9, color: "#555", lineHeight: 1.5 }}>
+                    Drop in project root, fill startup info,<br />
+                    then: <code style={{ background: "#ddd", padding: "0 3px" }}>claude &quot;pitch per CLAUDE.md&quot;</code>
+                  </div>
+                </div>
+                <div style={{ fontSize: 9, color: "#888" }}>
+                  Or use any HTTP agent — see API ref below ↓
+                </div>
               </div>
+
+              {/* Step 3 — Monitor */}
+              <div style={{ flex: 1.2, padding: 8, border: extActivity > 0 ? "2px solid lime" : "2px solid #888",
+                background: extActivity > 0 ? "#001a00" : "#eee", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: "bold", color: extActivity > 0 ? "lime" : "#000" }}>
+                  {extActivity > 0 ? "✓ Step 3" : "Step 3"} · Live Monitor
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <code style={{ fontSize: 9, background: extActivity > 0 ? "#002200" : "#ddd", color: extActivity > 0 ? "#aaffaa" : "#333",
+                    padding: "1px 4px", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {extSessionId.slice(0, 16)}...
+                  </code>
+                  <button className="win95-btn" style={{ fontSize: 9, padding: "1px 5px", flexShrink: 0 }}
+                    title="New session" onClick={regenerateSession}>↺</button>
+                </div>
+                {extActivity > 0
+                  ? <div style={{ fontSize: 9, color: "lime" }}>● {extActivity} messages · {sharks.length} VCs</div>
+                  : <div style={{ fontSize: 9, color: "#888" }}>Watching for messages...</div>
+                }
+              </div>
+            </div>
+
+            {/* API Reference — collapsible */}
+            <div style={{ borderTop: "1px solid #aaa" }}>
+              <button
+                className="win95-btn"
+                style={{ width: "100%", fontSize: 10, padding: "3px 12px", textAlign: "left", border: "none", borderRadius: 0,
+                  background: showApiRef ? "#ddd" : undefined, color: "#444" }}
+                onClick={() => setShowApiRef(v => !v)}>
+                {showApiRef ? "▲" : "▼"} API reference — for non-Claude-Code agents
+              </button>
+              {showApiRef && (
+                <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+                    <span style={{ fontWeight: "bold", flexShrink: 0 }}>Endpoint:</span>
+                    <code style={{ background: "#000", color: "#00ff88", padding: "2px 8px", fontFamily: "var(--font-pixel)",
+                      fontSize: 11, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", border: "1px inset #555" }}>
+                      POST {webhookUrl}
+                    </code>
+                    <button className="win95-btn"
+                      style={{ fontSize: 10, padding: "1px 10px", flexShrink: 0, background: copied ? "#00aa00" : undefined, color: copied ? "white" : undefined }}
+                      onClick={() => { navigator.clipboard.writeText(webhookUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                      {copied ? "✓" : "Copy"}
+                    </button>
+                  </div>
+                  <div style={{ position: "relative" }}>
+                    <pre style={{ background: "#111", color: "#aaffaa", fontSize: 10, padding: 8, margin: 0,
+                      border: "1px inset #555", overflowX: "auto", lineHeight: 1.5, fontFamily: "var(--font-pixel)" }}>
+                      {examplePayload}
+                    </pre>
+                    <button className="win95-btn"
+                      style={{ position: "absolute", top: 4, right: 4, fontSize: 10, padding: "1px 8px",
+                        background: copiedExample ? "#00aa00" : undefined, color: copiedExample ? "white" : undefined }}
+                      onClick={() => { navigator.clipboard.writeText(examplePayload); setCopiedExample(true); setTimeout(() => setCopiedExample(false), 2000); }}>
+                      {copiedExample ? "✓ Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* VC windows — one per investor */}
+          {/* VC windows — live monitor */}
           <div style={{ flex: 1, display: "flex", gap: 5, minHeight: 0 }}>
             {extVCStates.map((vc, i) => (
               <VCWindow key={vc.sharkId} vc={vc} chatRef={(el) => { extChatRefs.current[i] = el; }}
