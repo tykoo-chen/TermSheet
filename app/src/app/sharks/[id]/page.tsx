@@ -2,17 +2,10 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { sharks } from "@/lib/mock-data";
-import { useActiveAccount, ConnectButton, TransactionButton } from "thirdweb/react";
+import { useActiveAccount, ConnectButton } from "thirdweb/react";
 import { inAppWallet, createWallet } from "thirdweb/wallets";
-import { prepareContractCall, getContract } from "thirdweb";
 import { client } from "@/lib/thirdweb";
 import { base } from "thirdweb/chains";
-
-// USDC on Base — 6 decimals, $0.05 = 50_000
-const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-// Platform treasury — receives pitch fees. Set NEXT_PUBLIC_PLATFORM_WALLET in env.
-const PLATFORM_WALLET =
-  process.env.NEXT_PUBLIC_PLATFORM_WALLET || "0x0000000000000000000000000000000000000001";
 
 const wallets = [
   inAppWallet({ auth: { options: ["email", "x"] } }),
@@ -69,9 +62,6 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
   const chatRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // USDC payment state
-  const [pitchPaid, setPitchPaid] = useState(false);
-  const [payTxHash, setPayTxHash] = useState<string | null>(null);
 
   // Session identity
   const sessionIdRef = useRef<string>("");
@@ -157,18 +147,6 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
       </div>
     );
   }
-
-  // Build the USDC transfer transaction — called lazily by TransactionButton
-  const buildPitchFeeTransaction = () => {
-    if (!client) throw new Error("Client not configured");
-    const usdcContract = getContract({ client, chain: base, address: USDC_BASE });
-    if (!sessionIdRef.current) sessionIdRef.current = crypto.randomUUID();
-    return prepareContractCall({
-      contract: usdcContract,
-      method: "function transfer(address to, uint256 amount) returns (bool)",
-      params: [PLATFORM_WALLET as `0x${string}`, BigInt(50_000)], // $0.05 USDC
-    });
-  };
 
   const startPitch = async () => {
     if (blocked) return;
@@ -458,109 +436,54 @@ export default function SharkProfile({ params }: { params: { id: string } }) {
 
           {!started ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-              <div style={{ textAlign: "center", maxWidth: 360 }}>
-                <svg viewBox="0 0 32 32" width="48" height="48" style={{ margin: "0 auto 12px" }}>
-                  <path d="M16 2L2 30h28L16 2z" fill="yellow" stroke="#000" />
-                  <path d="M15 10h2v10h-2zM15 24h2v2h-2z" fill="#000" />
-                </svg>
-                <p style={{ fontFamily: "var(--font-pixel)", fontSize: 20, marginBottom: 8 }}>
-                  Ready to pitch {shark.name}?
+              <div style={{ textAlign: "center", maxWidth: 380 }}>
+                <img
+                  src={shark.avatar}
+                  alt={shark.name}
+                  style={{ width: 100, height: 100, borderRadius: 8, border: "3px inset", objectFit: "cover", margin: "0 auto 12px" }}
+                />
+                <p style={{ fontFamily: "var(--font-pixel)", fontSize: 18, marginBottom: 6 }}>
+                  Pitch to {shark.name}
                 </p>
-                <p style={{ fontSize: 12, color: "#666", marginBottom: 12, lineHeight: 1.5 }}>
-                  You&apos;ll have a conversation to describe your project.<br />
-                  No forms — just talk naturally and attach files.<br />
-                  If {shark.name} accepts, ${shark.stakedAmount.toLocaleString()} USDC goes to your wallet.
+                <p style={{ fontSize: 11, color: "#555", marginBottom: 14, lineHeight: 1.6 }}>
+                  Describe your startup. If {shark.name.split(" ")[0]} accepts,<br />
+                  <strong style={{ color: "green", fontFamily: "var(--font-pixel)", fontSize: 14 }}>${shark.stakedAmount.toLocaleString()} USDC</strong> goes directly to your wallet.
                 </p>
-                <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 16, textAlign: "left", lineHeight: 1.8 }}>
-                  <div>⏱ <strong>Session limit:</strong> 10 minutes</div>
-                  <div>📝 <strong>Per message:</strong> ~500 tokens (~375 words)</div>
-                  <div>🔷 <strong>Pitch fee:</strong> 0.05 USDC on Base (~5 cents)</div>
-                  <div>💰 <strong>If accepted:</strong> ${shark.stakedAmount.toLocaleString()} USDC to your wallet</div>
+
+                <div className="inset-box" style={{ fontSize: 11, padding: 8, marginBottom: 14, textAlign: "left", lineHeight: 1.9 }}>
+                  <div>⏱ <strong>10 min</strong> session · <strong>500 token</strong> per message limit</div>
+                  <div>🎯 Threshold: <strong>{shark.id === "garry-tan" || shark.id === "david-sacks" || shark.id === "zhu-xiaohu" ? "68" : shark.id === "marc-andreessen" ? "78" : shark.id === "sam-altman" || shark.id === "neil-shen" ? "82" : "70-80"}/100</strong> score to get funded</div>
+                  <div>💰 <strong>Payout:</strong> On-chain USDC — connects to wallet below</div>
                 </div>
 
-                {/* Step 1: connect wallet */}
-                {client && !account ? (
-                  <div>
-                    <div style={{ fontSize: 11, color: "#c00", marginBottom: 10, fontWeight: "bold" }}>
-                      ① Connect wallet — needed to pay fee &amp; receive USDC if accepted
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-                      <ConnectButton
-                        client={client!}
-                        wallets={wallets}
-                        chain={base}
-                        connectButton={{ label: "Connect Wallet →" }}
-                      />
+                {/* Optional wallet connect for payout */}
+                {client && !account && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 6 }}>
+                      Connect wallet to receive USDC if accepted (optional now, required on accept)
                     </div>
                     <div style={{ display: "flex", justifyContent: "center" }}>
-                      <Link href="/"><button className="win95-btn" style={{ fontSize: 12, padding: "4px 16px" }}>Back</button></Link>
-                    </div>
-                  </div>
-                ) : pitchPaid ? (
-                  /* Step 3: paid → start pitch */
-                  <div>
-                    <div style={{ fontSize: 11, color: "green", marginBottom: 6, fontWeight: "bold" }}>
-                      ✓ 0.05 USDC paid on-chain
-                      {payTxHash && (
-                        <span style={{ fontSize: 9, color: "#888", fontFamily: "var(--font-pixel)", marginLeft: 6 }}>
-                          tx: {payTxHash.slice(0, 10)}...
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                      <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 13, padding: "6px 20px" }} onClick={startPitch}>
-                        Start Pitch →
-                      </button>
-                      <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }}>Back</button></Link>
-                    </div>
-                  </div>
-                ) : (
-                  /* Step 2: pay 0.05 USDC on-chain */
-                  <div>
-                    {account && (
-                      <div style={{ fontSize: 10, color: "#666", marginBottom: 8, fontFamily: "var(--font-pixel)" }}>
-                        ✓ Wallet: {account.address.slice(0, 6)}...{account.address.slice(-4)}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, color: "#444", marginBottom: 12, lineHeight: 1.5 }}>
-                      Pay <strong>0.05 USDC</strong> (~5¢) on Base to start your session.<br />
-                      <span style={{ fontSize: 10, color: "#888" }}>Make sure you have USDC on Base network.</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                      {client ? (
-                        <TransactionButton
-                          transaction={buildPitchFeeTransaction}
-                          onTransactionConfirmed={(receipt) => {
-                            setPayTxHash(receipt.transactionHash);
-                            setPitchPaid(true);
-                          }}
-                          onError={(err) => {
-                            // If no platform wallet set, skip gate in dev
-                            if (PLATFORM_WALLET === "0x0000000000000000000000000000000000000001") {
-                              setPitchPaid(true);
-                            } else {
-                              console.error("Payment failed:", err);
-                            }
-                          }}
-                          style={{
-                            fontFamily: "var(--font-mono, monospace)",
-                            fontSize: 13,
-                            fontWeight: "bold",
-                            padding: "6px 20px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Pay 0.05 USDC &amp; Pitch →
-                        </TransactionButton>
-                      ) : (
-                        <button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }} onClick={() => setPitchPaid(true)}>
-                          Start Pitch →
-                        </button>
-                      )}
-                      <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "6px 20px" }}>Back</button></Link>
+                      <ConnectButton client={client!} wallets={wallets} chain={base}
+                        connectButton={{ label: "Connect Wallet for Payout" }} />
                     </div>
                   </div>
                 )}
+                {account && (
+                  <div style={{ fontSize: 10, color: "green", marginBottom: 10 }}>
+                    ✓ Payout wallet: {account.address.slice(0, 6)}...{account.address.slice(-4)}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  <button
+                    className="win95-btn"
+                    style={{ fontWeight: "bold", fontSize: 14, padding: "8px 28px", background: "yellow" }}
+                    onClick={startPitch}
+                  >
+                    Start Pitch →
+                  </button>
+                  <Link href="/"><button className="win95-btn" style={{ fontSize: 13, padding: "8px 16px" }}>Back</button></Link>
+                </div>
               </div>
             </div>
           ) : (

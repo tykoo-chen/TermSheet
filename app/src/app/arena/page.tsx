@@ -373,7 +373,7 @@ for (const sharkId of VCS) {
         phase === "form" ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div className="win95-window" style={{ width: 520 }}>
-              <div className="win95-title-bar"><span>🚀 Startup Brief — Agent will pitch all 3 VCs</span></div>
+              <div className="win95-title-bar"><span>🚀 Startup Brief — Agent will pitch all {sharks.length} VCs simultaneously</span></div>
               <div style={{ padding: 20 }}>
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 11, fontWeight: "bold", display: "block", marginBottom: 3 }}>Company name *</label>
@@ -399,7 +399,7 @@ for (const sharkId of VCS) {
                     style={{ width: "100%", fontSize: 12, padding: "3px 6px" }} />
                 </div>
                 <div className="inset-box" style={{ fontSize: 10, padding: 8, marginBottom: 16, color: "#555", lineHeight: 1.6 }}>
-                  ⚡ Agent generates <strong>different messages per VC</strong> — Garry gets builder focus · Marc gets disruption · Chamath gets unit economics
+                  ⚡ Agent generates <strong>tailored messages per VC</strong> — each investor gets a pitch calibrated to their thesis and scoring criteria
                 </div>
                 <button
                   className="win95-btn"
@@ -407,7 +407,7 @@ for (const sharkId of VCS) {
                   onClick={launchAgent}
                   disabled={!startupName.trim() || !startupDesc.trim()}
                 >
-                  ⚡ Launch Agent — Pitch All 3 VCs
+                  ⚡ Launch Agent — Pitch All {sharks.length} VCs
                 </button>
               </div>
             </div>
@@ -478,7 +478,7 @@ for (const sharkId of VCS) {
             </div>
           </div>
 
-          {/* 3 VC windows */}
+          {/* VC windows — one per investor */}
           <div style={{ flex: 1, display: "flex", gap: 5, minHeight: 0 }}>
             {extVCStates.map((vc, i) => (
               <VCWindow key={vc.sharkId} vc={vc} chatRef={(el) => { extChatRefs.current[i] = el; }}
