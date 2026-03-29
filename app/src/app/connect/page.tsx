@@ -23,7 +23,7 @@ WALLET_ADDRESS="${wallet}"
 SESSION_ID="${sessionId}"
 API_ENDPOINT="${API_BASE}/api/chat"
 SETTLE_ENDPOINT="${API_BASE}/api/settle"
-AVAILABLE_VCS=["garry-tan","marc-andreessen","chamath-palihapitiya"]
+AVAILABLE_VCS=["garry-tan","marc-andreessen","chamath-palihapitiya","peter-thiel","david-sacks","sam-altman","naval-ravikant","balaji-srinivasan","ben-horowitz","roelof-botha","zhu-xiaohu","neil-shen","kai-fu-lee"]
 
 ---
 
@@ -39,12 +39,28 @@ If a VC returns "decision":"ACCEPT", call the settle endpoint immediately:
 POST ${API_BASE}/api/settle
 Body: { "sessionId": "${sessionId}", "sharkId": "<vc-id>", "founderWallet": "${wallet}" }
 
-VCs available:
-- garry-tan — YC, $5,000 USDC prize, threshold: 68/100
-- marc-andreessen — a16z, $10,000 USDC prize, threshold: 78/100
-- chamath-palihapitiya — Social Capital, $8,000 USDC prize, threshold: 73/100
+VCs available (13 total — you can pitch up to 10 simultaneously):
+- garry-tan — YC, $5,000 USDC, threshold: 68/100
+- marc-andreessen — a16z, $10,000 USDC, threshold: 78/100
+- chamath-palihapitiya — Social Capital, $8,000 USDC, threshold: 73/100
+- peter-thiel — Founders Fund, $15,000 USDC, threshold: 80/100
+- david-sacks — Craft Ventures, $6,000 USDC, threshold: 68/100
+- sam-altman — OpenAI/Hydrazine, $12,000 USDC, threshold: 82/100
+- naval-ravikant — AngelList, $4,000 USDC, threshold: 70/100
+- balaji-srinivasan — Network State, $7,000 USDC, threshold: 76/100
+- ben-horowitz — a16z, $8,000 USDC, threshold: 72/100
+- roelof-botha — Sequoia, $9,000 USDC, threshold: 76/100
+- zhu-xiaohu — GSR Ventures, $6,000 USDC, threshold: 68/100
+- neil-shen — Sequoia China, $12,000 USDC, threshold: 82/100
+- kai-fu-lee — Sinovation, $6,500 USDC, threshold: 70/100
 
-STRATEGY: Start with garry-tan (lowest threshold). Ask the founder to describe their startup, then craft compelling answers. Keep messages under 400 words. Score rises with each round — aim for 3+ rounds before expecting acceptance.`;
+STRATEGY: Pick up to 10 VCs to pitch simultaneously. Start with lower-threshold VCs (garry-tan, david-sacks, zhu-xiaohu at 68). Ask the founder to describe their startup, then craft compelling answers. Keep messages under 400 words. Score rises with each round — aim for 3+ rounds before expecting acceptance.
+
+CRITICAL — NO FABRICATION:
+- NEVER make up, guess, or fabricate any startup data (name, metrics, revenue, users, team, market size, etc.).
+- ALWAYS ask the founder for real information before pitching. Do not proceed until you have real details.
+- If a VC asks a question you don't have the answer to, pause and ask the founder — do not invent an answer.
+- Only use information the founder has explicitly provided. If details are missing, ask follow-up questions.`;
 }
 
 export default function ConnectPage() {

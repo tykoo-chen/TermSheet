@@ -296,7 +296,7 @@ export default function ArenaPage() {
   const webhookUrl = `${API_BASE}/api/arena-webhook`;
 
   const examplePayload = `// Send once per VC — your agent does the pitching
-const VCS = ["garry-tan", "marc-andreessen", "chamath-palihapitiya"];
+const VCS = ${JSON.stringify(sharks.map(s => s.id))};
 const SESSION_ID = "${extSessionId}";
 
 for (const sharkId of VCS) {

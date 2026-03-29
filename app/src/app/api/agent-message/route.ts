@@ -95,7 +95,9 @@ RULES:
 - Keep it under 150 words.
 - ${isOpening ? "This is the opening message. Introduce the startup compellingly." : "This is a follow-up. React to the VC's last response and advance the pitch."}
 - Sound like a confident, prepared founder — not like an AI.
-- Never mention you are an AI agent.`;
+- Never mention you are an AI agent.
+- NEVER fabricate, invent, or guess any data about the startup (metrics, revenue, users, team, market size, etc.). Only use information explicitly provided in the STARTUP INFO above.
+- If the STARTUP INFO lacks details needed to answer a VC's question, acknowledge the gap honestly rather than making up numbers or facts.`;
 
   const messages = isOpening
     ? [{ role: "user" as const, content: "Write the opening pitch message for this VC." }]

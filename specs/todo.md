@@ -1,0 +1,7 @@
+    - 让Investor看起来更harsh更真实
+        - 一上来让你投简历；网站；视频
+        - 你的学历和背景judge一下（harsh way out）
+        - traction数据问一问
+    - 进行Agent2Agent的适配，让OpenClaw可以替自己的主人来pitch
+    - 前端的UI效果优化
+    - 钱包（USDC）接入，真的可以实现打钱

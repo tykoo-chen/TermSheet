@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arenaSessions, ArenaSession } from "@/lib/arena-sessions";
 
-const VALID_SHARKS = ["garry-tan", "marc-andreessen", "chamath-palihapitiya"];
+const VALID_SHARKS = [
+  "garry-tan", "marc-andreessen", "chamath-palihapitiya",
+  "peter-thiel", "david-sacks", "sam-altman", "naval-ravikant",
+  "balaji-srinivasan", "ben-horowitz", "roelof-botha",
+  "zhu-xiaohu", "neil-shen", "kai-fu-lee",
+];
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
