@@ -43,7 +43,7 @@ export const accelerators: Accelerator[] = [
   {
     id: "techstars",
     name: "Techstars",
-    avatar: "/accelerators/techstars.png",
+    avatar: "/accelerators/techstars.webp",
     tagline: "Global mentor-driven accelerator network",
     location: "Global (US, UK, Europe, Asia)",
     website: "techstars.com",
@@ -103,7 +103,7 @@ export const accelerators: Accelerator[] = [
   {
     id: "neo-residency",
     name: "Neo Residency",
-    avatar: "/accelerators/neo-residency.png",
+    avatar: "/accelerators/neo-residency.jpg",
     tagline: "Low-dilution, high-agency technical founder program",
     location: "San Francisco, CA",
     website: "neo.com",
@@ -163,7 +163,7 @@ export const accelerators: Accelerator[] = [
   {
     id: "yzi-labs",
     name: "YZi Labs (EASY Residency)",
-    avatar: "/accelerators/yzi-labs.png",
+    avatar: "/accelerators/yzi-labs.jpg",
     tagline: "Web3, AI, and biotech — backed by Binance ecosystem",
     location: "New York / San Francisco / Global",
     website: "yzilabs.com",
@@ -183,7 +183,7 @@ export const accelerators: Accelerator[] = [
   {
     id: "500-global",
     name: "500 Global",
-    avatar: "/accelerators/500-global.png",
+    avatar: "/accelerators/500-global.jpg",
     tagline: "The world's most globally distributed startup accelerator",
     location: "Silicon Valley + 75 countries",
     website: "500.co",
@@ -243,7 +243,7 @@ export const accelerators: Accelerator[] = [
   {
     id: "ai2-incubator",
     name: "AI2 Incubator",
-    avatar: "/accelerators/ai2-incubator.png",
+    avatar: "/accelerators/ai2-incubator.jpeg",
     tagline: "AI-only incubator with $200M compute access",
     location: "Seattle, WA",
     website: "ai2incubator.com",
