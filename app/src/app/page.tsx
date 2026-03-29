@@ -27,6 +27,16 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Arena Banner */}
+        <div style={{ padding: "6px 8px", background: "#000080", display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid var(--win-border-dark)" }}>
+          <span style={{ color: "white", fontFamily: "var(--font-pixel)", fontSize: 12, letterSpacing: 1 }}>⚡ ARENA MODE: Pitch all 3 VCs simultaneously</span>
+          <Link href="/arena" style={{ marginLeft: "auto" }}>
+            <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 11, padding: "2px 14px", background: "yellow" }}>
+              Enter Arena →
+            </button>
+          </Link>
+        </div>
+
         {/* Toolbar */}
         <div style={{ display: "flex", gap: 6, padding: "4px 6px", borderBottom: "1px solid var(--win-border-dark)", alignItems: "center" }}>
           <span style={{ fontSize: 11 }}>Find:</span>
