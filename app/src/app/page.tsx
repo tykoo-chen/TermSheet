@@ -29,7 +29,7 @@ export default function Home() {
 
         {/* Banner row */}
         <div style={{ padding: "4px 8px", background: "#000080", display: "flex", alignItems: "center", gap: 8, borderBottom: "2px solid var(--win-border-dark)", flexWrap: "wrap" }}>
-          <span style={{ color: "white", fontFamily: "var(--font-pixel)", fontSize: 11, letterSpacing: 1 }}>⚡ ARENA: Pitch all {sharks.length} VCs at once</span>
+          <span style={{ color: "white", fontFamily: "var(--font-pixel)", fontSize: 11, letterSpacing: 1 }}>⚡ ARENA: Pitch all VCs at once</span>
           <Link href="/arena">
             <button className="win95-btn" style={{ fontWeight: "bold", fontSize: 11, padding: "1px 10px", background: "yellow" }}>
               Enter →
