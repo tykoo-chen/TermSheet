@@ -39,6 +39,7 @@ export default function Navbar() {
 
   const navItems = [
     { href: "/", label: "Shark Tank", taskLabel: "Shark Tank" },
+    { href: "/accelerators", label: "Accelerator", taskLabel: "Accelerator" },
   ];
 
   return (
@@ -58,7 +59,7 @@ export default function Navbar() {
 
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
-          <div className={`task-item ${pathname === item.href ? "task-item-active" : ""}`}>
+          <div className={`task-item ${pathname.startsWith(item.href) && (item.href !== "/" || pathname === "/") ? "task-item-active" : ""}`}>
             {item.taskLabel}
           </div>
         </Link>
