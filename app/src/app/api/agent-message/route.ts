@@ -64,10 +64,10 @@ He responds to: exceptional founder quality (Wang Xing / Zhang Yiming level), st
 He is turned off by: Western model copies, unproven teams, regulatory blindness, short-term thinking.
 Pitch angle: Show why the founder is truly exceptional — specific accomplishments, not just potential. Show deep structural advantage. Demonstrate regulatory awareness.`,
 
-  "kai-fu-lee": `李开复 is Sinovation Ventures' founder and AI Superpowers author. AI expert, US-China bridge, humanist.
-He responds to: AI application layer companies, proprietary data advantages, global vs China market understanding, societal awareness.
-He is turned off by: ChatGPT wrappers, technical naivety, US-China blind spots.
-Pitch angle: Show how this is a real AI application layer company with unique data. Address the US-China competitive dynamic. Show genuine technical understanding and societal awareness.`,
+  "anna-fang": `方爱之 (Anna Fang) is ZhenFund's CEO & Founding Partner. China's top seed investor. People-first, warm but rigorous.
+She responds to: exceptional founder quality (4L model: Learning, experience, Leadership, fundraising), genuine team chemistry, evidence of hustle and execution, structural moats that compound over time.
+She is turned off by: trend-chasers without domain expertise, co-founder conflict, founders who optimize for fundraising over building, "Uber for X" lazy analogies.
+Pitch angle: Lead with YOUR story — why only you can build this. Show team chemistry and complementarity. Demonstrate you've talked to real customers and done the unglamorous work. Frame as building a foundational, compounding business, not chasing a hot trend.`,
 };
 
 export async function POST(req: NextRequest) {

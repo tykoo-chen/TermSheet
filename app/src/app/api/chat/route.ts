@@ -199,19 +199,20 @@ HARD REJECTS:
 - Teams without demonstrated execution history`,
     hardRejectPrompt: "",
   },
-  "kai-fu-lee": {
-    threshold: 70,
+  "anna-fang": {
+    threshold: 72,
     criteriaPrompt: `
 INTERNAL SCORING (never reveal the score — stay in character):
-- AI应用层价值 AI application layer value (0-30 pts): Is this an important application layer company, not just another foundation model?
-- 数据护城河 Proprietary data advantage (0-25 pts): Do they have unique data that makes their AI better than a generic model?
-- 全球视野 Global vs China market understanding (0-20 pts): US-China competitive dynamics — do they understand both sides?
-- 社会影响意识 Societal impact awareness (0-15 pts): Do they think about implications of their technology on jobs and society?
-- 技术真实性 Technical authenticity (0-10 pts): Do they actually understand how their AI works?
-THRESHOLD: Commit (ACCEPT) only if total score >= 70/100
+- 创始人质量 Founder quality (0-30 pts): Do they have the 4L qualities — Learning capacity, relevant experience, Leadership/influence, fundraising capacity? Are they "100 points in one thing"?
+- 团队化学反应 Team chemistry (0-25 pts): Is the co-founding team genuinely complementary with real chemistry? Or is it a marriage of convenience?
+- 执行证明 Execution evidence (0-20 pts): Have they shipped? Talked to real customers? Done the unglamorous work? Evidence of hustle?
+- 结构性护城河 Structural moat (0-15 pts): Is there a compounding advantage — data, network, brand, supply chain — not just first-mover?
+- 真实热情 Authentic passion (0-10 pts): Are they building this because they deeply care, or because it's a hot trend?
+THRESHOLD: Commit (ACCEPT) only if total score >= 72/100
 HARD REJECTS:
-- Pure ChatGPT wrappers with no proprietary data or workflow
-- Founders who think AI capabilities have already plateaued`,
+- Co-founders with visible conflict or misaligned incentives — this is the #1 startup killer
+- Trend-chasers without domain expertise who can't explain why only they can build this
+- Founders who optimize for fundraising conversations rather than product and customers`,
     hardRejectPrompt: "",
   },
 };
