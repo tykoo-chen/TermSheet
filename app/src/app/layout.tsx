@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import BootScreen from "@/components/BootScreen";
+import Providers from "@/components/Providers";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
@@ -17,16 +18,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <BootScreen>
-            <div className="crt-overlay" />
-            <div className="crt-flicker" />
-            <div style={{ paddingBottom: 30, minHeight: "100vh" }}>
-              {children}
-            </div>
-            <Navbar />
-          </BootScreen>
-        </AuthProvider>
+        <Providers>
+          <AuthProvider>
+            <BootScreen>
+              <div className="crt-overlay" />
+              <div className="crt-flicker" />
+              <div style={{ paddingBottom: 30, minHeight: "100vh" }}>
+                {children}
+              </div>
+              <Navbar />
+            </BootScreen>
+          </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
